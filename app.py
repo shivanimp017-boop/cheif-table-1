@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import os, json
+from rl_agent import get_recommendations, update_reward
 
 app = Flask(__name__)
 app.secret_key = 'chefs_table_secret_key'
@@ -34,7 +35,22 @@ def index():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html', username=session['username'])
+    users = load_users()
+    username = session['username']
+    user = users.get(username, {})
+    recommendations = get_recommendations(username, user)
+    return render_template('dashboard.html', username=username, recommendations=recommendations)
+
+@app.route('/rl_feedback', methods=['POST'])
+@login_required
+def rl_feedback():
+    from flask import jsonify
+    recipe = request.form.get('recipe', '').strip()
+    action = request.form.get('action', '')  # 'like' or 'dislike'
+    if recipe:
+        reward = 1.0 if action == 'like' else -0.5
+        update_reward(session['username'], recipe, reward)
+    return ('', 204)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

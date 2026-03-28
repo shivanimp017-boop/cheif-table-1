@@ -414,6 +414,32 @@
     <!-- Recommended Section -->
     <section class="recommended">
         <div class="section-header">
+            <h3>🤖 AI <span style="color:#c9a84c;">Recommended For You</span></h3>
+            <div class="line"></div>
+        </div>
+
+        <div class="cards" id="rlCards">
+            {% for rec in recommendations %}
+            <div class="card" data-name="{{ rec.name|lower }}" data-type="{{ rec.category }}" data-fav="false">
+                <div class="card-img">
+                    {% if rec.category == 'veg' %}🥗{% else %}🍖{% endif %}
+                </div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, '{{ rec.name }}')">♥</button>
+                    <span class="rating">★ {{ rec.score }}</span>
+                    <h4>{{ rec.name }}</h4>
+                    <p>AI recommended based on your preferences.</p>
+                    <span class="tag">{{ rec.category }}</span>
+                    <div style="margin-top:10px; display:flex; gap:8px;">
+                        <button onclick="sendFeedback('{{ rec.name }}', 'like', this)" style="flex:1; padding:6px; background:none; border:1px solid #4caf50; color:#4caf50; cursor:pointer; font-size:0.75rem; letter-spacing:1px;">👍 Like</button>
+                        <button onclick="sendFeedback('{{ rec.name }}', 'dislike', this)" style="flex:1; padding:6px; background:none; border:1px solid #e53935; color:#e53935; cursor:pointer; font-size:0.75rem; letter-spacing:1px;">👎 Dislike</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="section-header" style="margin-top:50px;">
             <h3>Recommended <span style="color:#c9a84c;">For You</span></h3>
             <div class="line"></div>
         </div>
@@ -519,6 +545,16 @@
     </footer>
 
     <script>
+        function sendFeedback(recipe, action, btn) {
+            fetch('/rl_feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `recipe=${encodeURIComponent(recipe)}&action=${action}`
+            });
+            btn.style.opacity = '0.4';
+            btn.disabled = true;
+        }
+
         function toggleMenu(e) {
             e.preventDefault();
             document.getElementById('dropdownMenu').classList.toggle('open');
