@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Chef's Table</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            border-bottom: 1px solid #333;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .logo span { color: #c9a84c; }
+
+        .container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+        }
+
+        .card {
+            background: #111;
+            border: 1px solid #333;
+            padding: 50px 40px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .card h2 {
+            text-align: center;
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .divider {
+            width: 60px;
+            height: 2px;
+            background: #c9a84c;
+            margin: 0 auto 35px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            background: #000;
+            border: 1px solid #444;
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: 'Georgia', serif;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        input:focus { border-color: #c9a84c; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            margin-top: 30px;
+            padding: 14px;
+            border: 2px solid #c9a84c;
+            color: #c9a84c;
+            background: transparent;
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Georgia', serif;
+        }
+
+        .btn:hover {
+            background: #c9a84c;
+            color: #000;
+        }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .footer-link a {
+            color: #c9a84c;
+            text-decoration: none;
+        }
+
+        .footer-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Chef<span>'s</span> Table</a>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>Login</h2>
+            <div class="divider"></div>
+
+            <form method="POST" action="/login">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="Enter your username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Enter your password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
+
+            <div class="footer-link">
+                Don't have an account? <a href="/register">Register</a>
+            </div>
+
+            {% if error %}
+            <p style="color:#e53935; text-align:center; margin-top:15px; font-size:0.85rem; letter-spacing:1px;">{{ error }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+</body>
+</html>

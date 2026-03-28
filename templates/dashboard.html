@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Chef's Table</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            border-bottom: 1px solid #333;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .logo span { color: #c9a84c; }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .nav-right a {
+            color: #ccc;
+            text-decoration: none;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        .nav-right a:hover { color: #c9a84c; }
+
+        /* Dropdown Menu */
+        .dropdown { position: relative; }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #111;
+            border: 1px solid #333;
+            min-width: 180px;
+            z-index: 100;
+            margin-top: 10px;
+        }
+
+        .dropdown-menu.open { display: block; }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #ccc;
+            text-decoration: none;
+            font-size: 0.82rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #222;
+            transition: all 0.3s;
+        }
+
+        .dropdown-menu a:last-child { border-bottom: none; }
+
+        .dropdown-menu a:hover {
+            background: #1a1a1a;
+            color: #c9a84c;
+            padding-left: 28px;
+        }
+
+        .dot-veg { color: #4caf50; margin-right: 6px; }
+        .dot-nonveg { color: #e53935; margin-right: 6px; }
+        .dot-fav { color: #c9a84c; margin-right: 6px; }
+
+        /* Search Section */
+        .search-section {
+            background: radial-gradient(ellipse at center, #1a1a1a 0%, #000 70%);
+            padding: 60px 20px 50px;
+            text-align: center;
+        }
+
+        .search-section h2 {
+            font-size: 2rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .search-section h2 span { color: #c9a84c; }
+
+        .search-section p {
+            color: #888;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+        }
+
+        .search-bar {
+            display: flex;
+            justify-content: center;
+            gap: 0;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 14px 20px;
+            background: #111;
+            border: 1px solid #444;
+            border-right: none;
+            color: #fff;
+            font-size: 1rem;
+            font-family: 'Georgia', serif;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        .search-bar input:focus { border-color: #c9a84c; }
+
+        .search-bar button {
+            padding: 14px 30px;
+            background: #c9a84c;
+            border: 1px solid #c9a84c;
+            color: #000;
+            font-size: 1rem;
+            cursor: pointer;
+            font-family: 'Georgia', serif;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: background 0.3s;
+        }
+
+        .search-bar button:hover { background: #b8963e; }
+
+        .add-recipe-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 36px;
+            border: 2px solid #c9a84c;
+            color: #c9a84c;
+            background: transparent;
+            font-size: 0.85rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .add-recipe-btn:hover { background: #c9a84c; color: #000; }
+
+        /* Search Results */
+        .search-results {
+            display: none;
+            max-width: 800px;
+            margin: 30px auto 0;
+            text-align: left;
+        }
+
+        .search-results.show { display: block; }
+
+        .result-item {
+            background: #111;
+            border: 1px solid #333;
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: border 0.3s;
+            text-decoration: none;
+        }
+
+        .result-item:hover { border-color: #c9a84c; }
+
+        .result-item img {
+            width: 90px;
+            height: 90px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .result-info { flex: 1; }
+
+        .result-info h4 {
+            color: #fff;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .result-info p {
+            color: #777;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .result-tags span {
+            display: inline-block;
+            padding: 3px 10px;
+            border: 1px solid #c9a84c;
+            color: #c9a84c;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-right: 6px;
+        }
+
+        .search-loading {
+            color: #888;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .no-results {
+            color: #555;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: #111;
+            border-top: 1px solid #333;
+            padding: 14px 0;
+            margin-top: 20px;
+        }
+
+        .bottom-nav a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            color: #777;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        .bottom-nav a:hover, .bottom-nav a.active { color: #c9a84c; }
+
+        .bottom-nav .icon { font-size: 1.8rem; }
+
+        /* Recommended Section */
+        .recommended {
+            padding: 60px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .section-header h3 {
+            font-size: 1.2rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .section-header .line {
+            flex: 1;
+            height: 1px;
+            background: #333;
+        }
+
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+
+        .card {
+            background: #111;
+            border: 1px solid #222;
+            width: calc(25% - 23px);
+            min-width: 220px;
+            transition: border 0.3s, transform 0.3s;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            border-color: #c9a84c;
+            transform: translateY(-4px);
+        }
+
+        .card-img {
+            font-size: 4rem;
+            text-align: center;
+            padding: 30px 20px 20px;
+            background: #1a1a1a;
+        }
+
+        .card-body { padding: 20px; }
+
+        .card-body h4 {
+            font-size: 1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .card-body p {
+            font-size: 0.82rem;
+            color: #777;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border: 1px solid #c9a84c;
+            color: #c9a84c;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .rating {
+            float: right;
+            color: #c9a84c;
+            font-size: 0.85rem;
+        }
+
+        .fav-btn {
+            background: none;
+            border: none;
+            color: #555;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: color 0.3s;
+            padding: 0;
+            float: right;
+            margin-left: 8px;
+        }
+
+        .fav-btn.active { color: #c9a84c; }
+        .fav-btn:hover { color: #c9a84c; }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            border-top: 1px solid #222;
+            color: #555;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Chef<span>'s</span> Table</a>
+        <div class="nav-right">
+            <div class="dropdown">
+                <a href="#" onclick="toggleMenu(event)">Menu ▾</a>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <a href="/veg"><span class="dot-veg">●</span> Veg</a>
+                    <a href="/nonveg"><span class="dot-nonveg">●</span> Non Veg</a>
+                    <a href="/favourites"><span class="dot-fav">★</span> Fav Recipes</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Search Section -->
+    <section class="search-section">
+        <h2>Find Your <span>Recipe</span></h2>
+        <p>Search from thousands of chef-curated dishes</p>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search recipes, cuisines, ingredients..." onkeyup="handleKey(event)">
+            <button onclick="searchRecipes()">Search</button>
+        </div>
+        <div class="search-loading" id="searchLoading">Searching...</div>
+        <div class="search-results" id="searchResults"></div>
+        <a href="/add_recipe" class="add-recipe-btn">➕ Add Your Recipe</a>
+    </section>
+
+    <!-- Recommended Section -->
+    <section class="recommended">
+        <div class="section-header">
+            <h3>Recommended <span style="color:#c9a84c;">For You</span></h3>
+            <div class="line"></div>
+        </div>
+
+        <div class="cards" id="recipeCards">
+            <div class="card" data-name="grilled salmon" data-type="nonveg" data-fav="false">
+                <div class="card-img">🐟</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Grilled Salmon')">♥</button>
+                    <span class="rating">★ 4.8</span>
+                    <h4>Grilled Salmon</h4>
+                    <p>Perfectly grilled salmon with lemon butter sauce and fresh herbs.</p>
+                    <span class="tag">Seafood</span>
+                </div>
+            </div>
+            <div class="card" data-name="pasta carbonara" data-type="nonveg" data-fav="true">
+                <div class="card-img">🍝</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Pasta Carbonara')">♥</button>
+                    <span class="rating">★ 4.7</span>
+                    <p>Classic Italian pasta with creamy egg sauce, pancetta and parmesan.</p>
+                    <span class="tag">Italian</span>
+                </div>
+            </div>
+            <div class="card" data-name="beef steak" data-type="nonveg" data-fav="false">
+                <div class="card-img">🥩</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Beef Steak')">♥</button>
+                    <span class="rating">★ 4.9</span>
+                    <p>Juicy prime cut steak seasoned with garlic, rosemary and butter.</p>
+                    <span class="tag">Grill</span>
+                </div>
+            </div>
+            <div class="card" data-name="caesar salad" data-type="veg" data-fav="true">
+                <div class="card-img">🥗</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Caesar Salad')">♥</button>
+                    <span class="rating">★ 4.5</span>
+                    <h4>Caesar Salad</h4>
+                    <p>Crisp romaine lettuce with caesar dressing, croutons and parmesan.</p>
+                    <span class="tag">Salad</span>
+                </div>
+            </div>
+            <div class="card" data-name="chicken curry" data-type="nonveg" data-fav="false">
+                <div class="card-img">🍛</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Chicken Curry')">♥</button>
+                    <span class="rating">★ 4.6</span>
+                    <h4>Chicken Curry</h4>
+                    <p>Rich and aromatic chicken curry with spices, coconut milk and rice.</p>
+                    <span class="tag">Indian</span>
+                </div>
+            </div>
+            <div class="card" data-name="chocolate lava cake" data-type="veg" data-fav="true">
+                <div class="card-img">🍫</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Chocolate Lava Cake')">♥</button>
+                    <span class="rating">★ 4.9</span>
+                    <p>Warm chocolate cake with a gooey molten center, served with ice cream.</p>
+                    <span class="tag">Dessert</span>
+                </div>
+            </div>
+            <div class="card" data-name="sushi platter" data-type="nonveg" data-fav="false">
+                <div class="card-img">🍣</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Sushi Platter')">♥</button>
+                    <span class="rating">★ 4.7</span>
+                    <p>Assorted fresh sushi rolls with soy sauce, wasabi and pickled ginger.</p>
+                    <span class="tag">Japanese</span>
+                </div>
+            </div>
+            <div class="card" data-name="margherita pizza" data-type="veg" data-fav="true">
+                <div class="card-img">🍕</div>
+                <div class="card-body">
+                    <button class="fav-btn" onclick="toggleFav(this, 'Margherita Pizza')">♥</button>
+                    <span class="rating">★ 4.6</span>
+                    <h4>Margherita Pizza</h4>
+                    <p>Classic wood-fired pizza with tomato sauce, fresh mozzarella and basil.</p>
+                    <span class="tag">Italian</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom Icon Buttons -->
+    <div class="bottom-nav">
+        <a href="/dashboard" class="active">
+            <span class="icon">🏠</span>
+            <span>Home</span>
+        </a>
+        <a href="/detect">
+            <span class="icon">📷</span>
+            <span>Camera</span>
+        </a>
+        <a href="/profile">
+            <span class="icon">👤</span>
+            <span>Profile</span>
+        </a>
+    </div>
+
+    <footer>
+        &copy; 2025 Chef's Table. All rights reserved.
+    </footer>
+
+    <script>
+        function toggleMenu(e) {
+            e.preventDefault();
+            document.getElementById('dropdownMenu').classList.toggle('open');
+        }
+
+        document.addEventListener('click', function(e) {
+            const dropdown = document.querySelector('.dropdown');
+            if (!dropdown.contains(e.target)) {
+                document.getElementById('dropdownMenu').classList.remove('open');
+            }
+        });
+
+        function handleKey(e) {
+            if (e.key === 'Enter') searchRecipes();
+            applyFilters();
+        }
+
+        function searchRecipes() {
+            const query = document.getElementById('searchInput').value.trim();
+
+            if (!query) {
+                document.getElementById('searchResults').classList.remove('show');
+                document.getElementById('searchResults').innerHTML = '';
+                applyFilters();
+                return;
+            }
+
+            // Save search history
+            fetch('/save_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'query=' + encodeURIComponent(query)
+            });
+
+            applyFilters();
+
+            const loading = document.getElementById('searchLoading');
+            const results = document.getElementById('searchResults');
+            loading.style.display = 'block';
+            results.classList.remove('show');
+            results.innerHTML = '';
+
+            fetch('/search?q=' + encodeURIComponent(query))
+                .then(res => res.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    results.classList.add('show');
+                    if (data.error) {
+                        results.innerHTML = `<div class="no-results">⚠️ ${data.error}</div>`;
+                        return;
+                    }
+                    if (!data.items || data.items.length === 0) {
+                        results.innerHTML = '<div class="no-results">No results found.</div>';
+                        return;
+                    }
+                    results.innerHTML = data.items.map(item => `
+                        <a class="result-item" href="${item.link}">
+                            <img src="${item.thumb}" alt="${item.title}">
+                            <div class="result-info">
+                                <h4>${item.title}</h4>
+                                <p>${item.instructions}</p>
+                                <div class="result-tags">
+                                    <span>${item.category}</span>
+                                    <span>${item.area}</span>
+                                </div>
+                            </div>
+                        </a>
+                    `).join('');
+                })
+                .catch(() => {
+                    loading.style.display = 'none';
+                    results.classList.add('show');
+                    results.innerHTML = '<div class="no-results">Could not fetch results. Try again.</div>';
+                });
+        }
+
+        function toggleFav(btn, name) {
+            btn.classList.toggle('active');
+            fetch('/toggle_favourite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'item=' + encodeURIComponent(name)
+            });
+        }
+
+        let activeFilter = 'all';
+
+        function filterCards(type) {
+            activeFilter = type;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.card').forEach(card => {
+                const name = card.getAttribute('data-name');
+                const type = card.getAttribute('data-type');
+                const fav  = card.getAttribute('data-fav');
+                const matchSearch = name.includes(query) || query === '';
+                const matchFilter =
+                    activeFilter === 'all' ||
+                    (activeFilter === 'veg' && type === 'veg') ||
+                    (activeFilter === 'nonveg' && type === 'nonveg') ||
+                    (activeFilter === 'fav' && fav === 'true');
+                card.style.display = matchSearch && matchFilter ? 'block' : 'none';
+            });
+        }
+    </script>
+
+</body>
+</html>

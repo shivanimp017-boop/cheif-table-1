@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera - Chef's Table</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            border-bottom: 1px solid #333;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .logo span { color: #c9a84c; }
+
+        .back-btn {
+            display: inline-block;
+            padding: 8px 24px;
+            border: 1px solid #444;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+
+        .hero {
+            text-align: center;
+            padding: 50px 20px 30px;
+            background: radial-gradient(ellipse at center, #1a1a1a 0%, #000 70%);
+            border-bottom: 1px solid #222;
+        }
+
+        .hero h2 {
+            font-size: 2rem;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .hero h2 span { color: #c9a84c; }
+
+        .hero p { color: #777; font-size: 0.9rem; letter-spacing: 2px; }
+
+        .divider { width: 60px; height: 2px; background: #c9a84c; margin: 15px auto; }
+
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* Option Buttons */
+        .options {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .option-btn {
+            flex: 1;
+            padding: 20px;
+            background: #111;
+            border: 2px solid #333;
+            color: #ccc;
+            font-family: 'Georgia', serif;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .option-btn .btn-icon { font-size: 2rem; display: block; margin-bottom: 10px; }
+
+        .option-btn:hover, .option-btn.active {
+            border-color: #c9a84c;
+            color: #c9a84c;
+            background: #1a1500;
+        }
+
+        /* Panels */
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* Upload Panel */
+        .upload-area {
+            border: 2px dashed #444;
+            padding: 50px 20px;
+            text-align: center;
+            transition: border 0.3s;
+        }
+
+        .upload-area:hover { border-color: #c9a84c; }
+
+        .upload-area input { display: none; }
+
+        .upload-area .up-icon { font-size: 3rem; margin-bottom: 15px; }
+
+        .upload-area p { color: #777; font-size: 0.9rem; letter-spacing: 1px; }
+
+        .upload-area p span { color: #c9a84c; }
+
+        .preview-img {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            margin-top: 20px;
+            display: none;
+            border: 1px solid #333;
+        }
+
+        /* Camera Panel */
+        #videoContainer {
+            position: relative;
+            background: #111;
+            border: 1px solid #333;
+            text-align: center;
+        }
+
+        #video {
+            width: 100%;
+            max-height: 340px;
+            object-fit: cover;
+            display: block;
+        }
+
+        #canvas { display: none; }
+
+        .captured-img {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            display: none;
+            border: 1px solid #333;
+            margin-top: 10px;
+        }
+
+        .cam-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            flex: 1;
+            padding: 13px;
+            border: 2px solid #c9a84c;
+            color: #c9a84c;
+            background: transparent;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Georgia', serif;
+        }
+
+        .action-btn:hover { background: #c9a84c; color: #000; }
+
+        .action-btn.red { border-color: #e53935; color: #e53935; }
+        .action-btn.red:hover { background: #e53935; color: #fff; }
+
+        /* Result */
+        .result-box {
+            margin-top: 30px;
+            background: #111;
+            border: 1px solid #333;
+            padding: 24px;
+            display: none;
+        }
+
+        .result-box.show { display: block; }
+
+        .result-box h3 {
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #c9a84c;
+            margin-bottom: 15px;
+        }
+
+        .result-box p { color: #aaa; font-size: 0.9rem; line-height: 1.7; }
+
+        .result-tags { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .result-tags a {
+            padding: 5px 14px;
+            border: 1px solid #c9a84c;
+            color: #c9a84c;
+            font-size: 0.72rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .result-tags a:hover { background: #c9a84c; color: #000; }
+
+        .loading { color: #888; text-align: center; padding: 20px; letter-spacing: 2px; font-size: 0.85rem; display: none; }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%;
+            background: #111;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            z-index: 999;
+        }
+
+        .bottom-nav a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            color: #777;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        .bottom-nav a:hover, .bottom-nav a.active { color: #c9a84c; }
+        .bottom-nav .icon { font-size: 1.6rem; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Chef<span>'s</span> Table</a>
+        <a href="/dashboard" class="back-btn">← Back</a>
+    </nav>
+
+    <div class="hero">
+        <div style="font-size:3rem; margin-bottom:10px;">📷</div>
+        <h2>Detect <span>Food</span></h2>
+        <div class="divider"></div>
+        <p>Upload or take a photo to identify the dish and find recipes</p>
+    </div>
+
+    <div class="container">
+
+        <!-- Option Buttons -->
+        <div class="options">
+            <button class="option-btn active" id="uploadBtn" onclick="switchPanel('upload')">
+                <span class="btn-icon">📁</span>
+                Upload Photo
+            </button>
+            <button class="option-btn" id="cameraBtn" onclick="switchPanel('camera')">
+                <span class="btn-icon">📸</span>
+                Take Photo
+            </button>
+        </div>
+
+        <!-- Upload Panel -->
+        <div class="panel active" id="uploadPanel">
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" accept="image/*" onchange="previewUpload(event)">
+                <div class="up-icon">🖼️</div>
+                <p>Click to browse files from your device</p>
+                <p style="margin-top:8px; font-size:0.75rem;"><span>JPG, PNG, WEBP</span> supported</p>
+            </div>
+            <img id="uploadPreview" class="preview-img">
+            <div style="display:flex; gap:12px; margin-top:15px;">
+                <button class="action-btn" onclick="document.getElementById('fileInput').click()">📂 Browse Files</button>
+                <button class="action-btn" onclick="detectFood('upload')">🔍 Detect Food</button>
+                <button class="action-btn red" onclick="clearUpload()">✕ Clear</button>
+            </div>
+        </div>
+
+        <!-- Camera Panel -->
+        <div class="panel" id="cameraPanel">
+            <div id="videoContainer">
+                <video id="video" autoplay playsinline muted></video>
+            </div>
+            <canvas id="canvas"></canvas>
+            <img id="capturedImg" class="captured-img">
+            <div class="cam-controls">
+                <button class="action-btn" id="captureBtn" onclick="capturePhoto()">📸 Capture</button>
+                <button class="action-btn" onclick="detectFood('camera')">🔍 Detect Food</button>
+                <button class="action-btn red" onclick="retakePhoto()">🔄 Retake</button>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loadingMsg">🔍 Analysing image...</div>
+
+        <!-- Result -->
+        <div class="result-box" id="resultBox">
+            <h3>🍽️ Detected Food</h3>
+            <p id="resultText"></p>
+            <div class="result-tags" id="resultTags"></div>
+        </div>
+
+    </div>
+
+    <div class="bottom-nav">
+        <a href="/dashboard"><span class="icon">🏠</span><span>Home</span></a>
+        <a href="/detect" class="active"><span class="icon">📷</span><span>Camera</span></a>
+        <a href="/profile"><span class="icon">👤</span><span>Profile</span></a>
+    </div>
+
+    <script>
+        let stream = null;
+        let capturedDataUrl = null;
+
+        function switchPanel(type) {
+            document.getElementById('uploadPanel').classList.remove('active');
+            document.getElementById('cameraPanel').classList.remove('active');
+            document.getElementById('uploadBtn').classList.remove('active');
+            document.getElementById('cameraBtn').classList.remove('active');
+            document.getElementById('resultBox').classList.remove('show');
+            document.getElementById('loadingMsg').style.display = 'none';
+
+            if (type === 'upload') {
+                document.getElementById('uploadPanel').classList.add('active');
+                document.getElementById('uploadBtn').classList.add('active');
+                stopCamera();
+            } else {
+                document.getElementById('cameraPanel').classList.add('active');
+                document.getElementById('cameraBtn').classList.add('active');
+                startCamera();
+            }
+        }
+
+        function startCamera() {
+            capturedDataUrl = null;
+            document.getElementById('capturedImg').style.display = 'none';
+            document.getElementById('video').style.display = 'block';
+            document.getElementById('captureBtn').textContent = '📸 Capture';
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Camera not supported on this browser. Please use Chrome or Safari.');
+                return;
+            }
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+                .then(s => {
+                    stream = s;
+                    const video = document.getElementById('video');
+                    video.srcObject = s;
+                    video.play();
+                })
+                .catch(err => {
+                    if (err.name === 'NotAllowedError') {
+                        alert('Camera permission denied. Please allow camera access in your browser settings.');
+                    } else if (err.name === 'NotFoundError') {
+                        alert('No camera found on this device.');
+                    } else {
+                        alert('Could not open camera: ' + err.message);
+                    }
+                });
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('video');
+            if (!stream) { alert('Camera is not active. Click Take Photo first.'); return; }
+            const canvas = document.getElementById('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            capturedDataUrl = canvas.toDataURL('image/jpeg');
+            const img = document.getElementById('capturedImg');
+            img.src = capturedDataUrl;
+            img.style.display = 'block';
+            video.style.display = 'none';
+            stopCamera();
+        }
+
+        function retakePhoto() {
+            capturedDataUrl = null;
+            document.getElementById('capturedImg').style.display = 'none';
+            document.getElementById('resultBox').classList.remove('show');
+            startCamera();
+        }
+
+        function previewUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const img = document.getElementById('uploadPreview');
+                img.src = ev.target.result;
+                img.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearUpload() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadPreview').style.display = 'none';
+            document.getElementById('resultBox').classList.remove('show');
+        }
+
+        function detectFood(source) {
+            let imageData = null;
+
+            if (source === 'upload') {
+                const file = document.getElementById('fileInput').files[0];
+                if (!file) { alert('Please select an image first.'); return; }
+                const reader = new FileReader();
+                reader.onload = ev => sendDetect(ev.target.result);
+                reader.readAsDataURL(file);
+                return;
+            } else {
+                if (!capturedDataUrl) { alert('Please capture a photo first.'); return; }
+                sendDetect(capturedDataUrl);
+            }
+        }
+
+        function sendDetect(dataUrl) {
+            document.getElementById('loadingMsg').style.display = 'block';
+            document.getElementById('resultBox').classList.remove('show');
+
+            fetch('/detect_food', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataUrl })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loadingMsg').style.display = 'none';
+                const box = document.getElementById('resultBox');
+                box.classList.add('show');
+                document.getElementById('resultText').textContent = data.description || 'Food detected!';
+                const tags = document.getElementById('resultTags');
+                tags.innerHTML = (data.keywords || []).map(k =>
+                    `<a href="/dashboard?q=${encodeURIComponent(k)}" onclick="searchFromDetect('${k}')">${k}</a>`
+                ).join('');
+            })
+            .catch(() => {
+                document.getElementById('loadingMsg').style.display = 'none';
+                alert('Detection failed. Try again.');
+            });
+        }
+
+        function searchFromDetect(keyword) {
+            localStorage.setItem('detectSearch', keyword);
+        }
+    </script>
+
+</body>
+</html>
