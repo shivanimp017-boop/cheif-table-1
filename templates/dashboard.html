@@ -152,6 +152,41 @@
 
         .search-bar button:hover { background: #b8963e; }
 
+        /* Search History Dropdown */
+        .search-wrapper { position: relative; max-width: 600px; margin: 0 auto; }
+
+        .history-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #111;
+            border: 1px solid #444;
+            border-top: none;
+            z-index: 200;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .history-dropdown.show { display: block; }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #222;
+            font-size: 0.88rem;
+            color: #ccc;
+            transition: background 0.2s;
+        }
+
+        .history-item:last-child { border-bottom: none; }
+        .history-item:hover { background: #1a1a1a; color: #c9a84c; }
+        .history-item .h-icon { color: #555; font-size: 0.9rem; }
+
         .add-recipe-btn {
             display: inline-block;
             margin-top: 20px;
@@ -309,6 +344,9 @@
             min-width: 220px;
             transition: border 0.3s, transform 0.3s;
             cursor: pointer;
+            text-decoration: none;
+            display: block;
+            color: #fff;
         }
 
         .card:hover {
@@ -317,10 +355,28 @@
         }
 
         .card-img {
+            height: 180px;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        .card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .card:hover .card-img img { transform: scale(1.05); }
+
+        .card-img .emoji-fallback {
             font-size: 4rem;
             text-align: center;
             padding: 30px 20px 20px;
-            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
         }
 
         .card-body { padding: 20px; }
@@ -393,6 +449,10 @@
                     <a href="/veg"><span class="dot-veg">●</span> Veg</a>
                     <a href="/nonveg"><span class="dot-nonveg">●</span> Non Veg</a>
                     <a href="/favourites"><span class="dot-fav">★</span> Fav Recipes</a>
+                    <a href="/quiz">🎯 Food Quiz</a>
+                    <a href="/rl_stats">📈 RL Stats</a>
+                    <a href="/notifications">🔔 Notifications</a>
+                    <a href="/settings">⚙️ Settings</a>
                 </div>
             </div>
         </div>
@@ -402,9 +462,12 @@
     <section class="search-section">
         <h2>Find Your <span>Recipe</span></h2>
         <p>Search from thousands of chef-curated dishes</p>
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Search recipes, cuisines, ingredients..." onkeyup="handleKey(event)">
-            <button onclick="searchRecipes()">Search</button>
+        <div class="search-wrapper">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search recipes, cuisines, ingredients..." onkeyup="handleKey(event)" onfocus="showHistory()" autocomplete="off">
+                <button onclick="searchRecipes()">Search</button>
+            </div>
+            <div class="history-dropdown" id="historyDropdown"></div>
         </div>
         <div class="search-loading" id="searchLoading">Searching...</div>
         <div class="search-results" id="searchResults"></div>
@@ -420,22 +483,26 @@
 
         <div class="cards" id="rlCards">
             {% for rec in recommendations %}
-            <div class="card" data-name="{{ rec.name|lower }}" data-type="{{ rec.category }}" data-fav="false">
+            <a class="card" href="{% if rec.meal_id %}/recipe/{{ rec.meal_id }}{% else %}#{% endif %}" data-name="{{ rec.name|lower }}" data-type="{{ rec.category }}" data-fav="false">
                 <div class="card-img">
-                    {% if rec.category == 'veg' %}🥗{% else %}🍖{% endif %}
+                    {% if rec.image %}
+                    <img src="{{ rec.image }}" alt="{{ rec.name }}">
+                    {% else %}
+                    <div class="emoji-fallback">{% if rec.category == 'veg' %}🥗{% else %}🍖{% endif %}</div>
+                    {% endif %}
                 </div>
                 <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, '{{ rec.name }}')">♥</button>
+                    <button class="fav-btn" onclick="event.preventDefault(); toggleFav(this, '{{ rec.name }}')">♥</button>
                     <span class="rating">★ {{ rec.score }}</span>
                     <h4>{{ rec.name }}</h4>
                     <p>AI recommended based on your preferences.</p>
                     <span class="tag">{{ rec.category }}</span>
                     <div style="margin-top:10px; display:flex; gap:8px;">
-                        <button onclick="sendFeedback('{{ rec.name }}', 'like', this)" style="flex:1; padding:6px; background:none; border:1px solid #4caf50; color:#4caf50; cursor:pointer; font-size:0.75rem; letter-spacing:1px;">👍 Like</button>
-                        <button onclick="sendFeedback('{{ rec.name }}', 'dislike', this)" style="flex:1; padding:6px; background:none; border:1px solid #e53935; color:#e53935; cursor:pointer; font-size:0.75rem; letter-spacing:1px;">👎 Dislike</button>
+                        <button onclick="event.preventDefault(); sendFeedback('{{ rec.name }}', 'like', this)" style="flex:1; padding:6px; background:none; border:1px solid #4caf50; color:#4caf50; cursor:pointer; font-size:0.75rem; letter-spacing:1px;">👍 Like</button>
+                        <button onclick="event.preventDefault(); sendFeedback('{{ rec.name }}', 'dislike', this)" style="flex:1; padding:6px; background:none; border:1px solid #e53935; color:#e53935; cursor:pointer; font-size:0.75rem; letter-spacing:1px;">👎 Dislike</button>
                     </div>
                 </div>
-            </div>
+            </a>
             {% endfor %}
         </div>
 
@@ -445,82 +512,70 @@
         </div>
 
         <div class="cards" id="recipeCards">
-            <div class="card" data-name="grilled salmon" data-type="nonveg" data-fav="false">
-                <div class="card-img">🐟</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Grilled Salmon')">♥</button>
-                    <span class="rating">★ 4.8</span>
-                    <h4>Grilled Salmon</h4>
-                    <p>Perfectly grilled salmon with lemon butter sauce and fresh herbs.</p>
-                    <span class="tag">Seafood</span>
-                </div>
-            </div>
-            <div class="card" data-name="pasta carbonara" data-type="nonveg" data-fav="true">
-                <div class="card-img">🍝</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Pasta Carbonara')">♥</button>
-                    <span class="rating">★ 4.7</span>
-                    <p>Classic Italian pasta with creamy egg sauce, pancetta and parmesan.</p>
-                    <span class="tag">Italian</span>
-                </div>
-            </div>
-            <div class="card" data-name="beef steak" data-type="nonveg" data-fav="false">
-                <div class="card-img">🥩</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Beef Steak')">♥</button>
-                    <span class="rating">★ 4.9</span>
-                    <p>Juicy prime cut steak seasoned with garlic, rosemary and butter.</p>
-                    <span class="tag">Grill</span>
-                </div>
-            </div>
-            <div class="card" data-name="caesar salad" data-type="veg" data-fav="true">
-                <div class="card-img">🥗</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Caesar Salad')">♥</button>
-                    <span class="rating">★ 4.5</span>
-                    <h4>Caesar Salad</h4>
-                    <p>Crisp romaine lettuce with caesar dressing, croutons and parmesan.</p>
-                    <span class="tag">Salad</span>
-                </div>
-            </div>
-            <div class="card" data-name="chicken curry" data-type="nonveg" data-fav="false">
-                <div class="card-img">🍛</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Chicken Curry')">♥</button>
-                    <span class="rating">★ 4.6</span>
-                    <h4>Chicken Curry</h4>
-                    <p>Rich and aromatic chicken curry with spices, coconut milk and rice.</p>
-                    <span class="tag">Indian</span>
-                </div>
-            </div>
-            <div class="card" data-name="chocolate lava cake" data-type="veg" data-fav="true">
-                <div class="card-img">🍫</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Chocolate Lava Cake')">♥</button>
-                    <span class="rating">★ 4.9</span>
-                    <p>Warm chocolate cake with a gooey molten center, served with ice cream.</p>
-                    <span class="tag">Dessert</span>
-                </div>
-            </div>
-            <div class="card" data-name="sushi platter" data-type="nonveg" data-fav="false">
-                <div class="card-img">🍣</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Sushi Platter')">♥</button>
-                    <span class="rating">★ 4.7</span>
-                    <p>Assorted fresh sushi rolls with soy sauce, wasabi and pickled ginger.</p>
-                    <span class="tag">Japanese</span>
-                </div>
-            </div>
-            <div class="card" data-name="margherita pizza" data-type="veg" data-fav="true">
-                <div class="card-img">🍕</div>
-                <div class="card-body">
-                    <button class="fav-btn" onclick="toggleFav(this, 'Margherita Pizza')">♥</button>
-                    <span class="rating">★ 4.6</span>
-                    <h4>Margherita Pizza</h4>
-                    <p>Classic wood-fired pizza with tomato sauce, fresh mozzarella and basil.</p>
-                    <span class="tag">Italian</span>
-                </div>
-            </div>
+            <a class="card" href="/recipe/52959" data-name="grilled salmon" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/xxyupu1468262513.jpg" alt="Grilled Salmon"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Grilled Salmon')">♥</button><span class="rating">★ 4.8</span><h4>Grilled Salmon</h4><p>Perfectly grilled salmon with lemon butter sauce.</p><span class="tag">Seafood</span></div>
+            </a>
+            <a class="card" href="/recipe/52982" data-name="pasta carbonara" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/llcbn01574260722.jpg" alt="Pasta Carbonara"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Pasta Carbonara')">♥</button><span class="rating">★ 4.7</span><h4>Pasta Carbonara</h4><p>Classic Italian pasta with creamy egg sauce and parmesan.</p><span class="tag">Italian</span></div>
+            </a>
+            <a class="card" href="/recipe/52874" data-name="beef steak" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/sytuqu1511553755.jpg" alt="Beef Steak"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Beef Steak')">♥</button><span class="rating">★ 4.9</span><h4>Beef Steak</h4><p>Juicy prime cut steak seasoned with garlic and rosemary.</p><span class="tag">Grill</span></div>
+            </a>
+            <a class="card" href="/recipe/53049" data-name="caesar salad" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/xxrxux1503070723.jpg" alt="Caesar Salad"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Caesar Salad')">♥</button><span class="rating">★ 4.5</span><h4>Caesar Salad</h4><p>Crisp romaine lettuce with caesar dressing and croutons.</p><span class="tag">Salad</span></div>
+            </a>
+            <a class="card" href="/recipe/52772" data-name="chicken curry" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/wyxwsp1486979827.jpg" alt="Chicken Curry"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Chicken Curry')">♥</button><span class="rating">★ 4.6</span><h4>Chicken Curry</h4><p>Rich and aromatic chicken curry with coconut milk.</p><span class="tag">Indian</span></div>
+            </a>
+            <a class="card" href="/recipe/52893" data-name="chocolate lava cake" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/joxuw61511793650.jpg" alt="Chocolate Lava Cake"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Chocolate Lava Cake')">♥</button><span class="rating">★ 4.9</span><h4>Chocolate Lava Cake</h4><p>Warm chocolate cake with a gooey molten center.</p><span class="tag">Dessert</span></div>
+            </a>
+            <a class="card" href="/recipe/53065" data-name="sushi platter" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/g046bb1663960946.jpg" alt="Sushi Platter"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Sushi Platter')">♥</button><span class="rating">★ 4.7</span><h4>Sushi Platter</h4><p>Assorted fresh sushi rolls with soy sauce and wasabi.</p><span class="tag">Japanese</span></div>
+            </a>
+            <a class="card" href="/recipe/52768" data-name="margherita pizza" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/x0lk931587671540.jpg" alt="Margherita Pizza"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Margherita Pizza')">♥</button><span class="rating">★ 4.6</span><h4>Margherita Pizza</h4><p>Classic wood-fired pizza with tomato sauce and mozzarella.</p><span class="tag">Italian</span></div>
+            </a>
+            <a class="card" href="/recipe/52869" data-name="butter chicken" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/tkxquw1628771028.jpg" alt="Butter Chicken"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Butter Chicken')">♥</button><span class="rating">★ 4.8</span><h4>Butter Chicken</h4><p>Tender chicken in a rich creamy tomato butter sauce.</p><span class="tag">Indian</span></div>
+            </a>
+            <a class="card" href="/recipe/52785" data-name="dal tadka" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/wuxrtu1483564410.jpg" alt="Dal Tadka"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Dal Tadka')">♥</button><span class="rating">★ 4.6</span><h4>Dal Tadka</h4><p>Yellow lentils tempered with cumin and aromatic spices.</p><span class="tag">Indian</span></div>
+            </a>
+            <a class="card" href="/recipe/52819" data-name="garlic shrimp" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/xxpqsy1511452222.jpg" alt="Garlic Shrimp"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Garlic Shrimp')">♥</button><span class="rating">★ 4.6</span><h4>Garlic Shrimp</h4><p>Juicy shrimp sauteed in garlic butter with lemon.</p><span class="tag">Seafood</span></div>
+            </a>
+            <a class="card" href="/recipe/52818" data-name="chicken tacos" data-type="nonveg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/cpkvms1511206747.jpg" alt="Chicken Tacos"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Chicken Tacos')">♥</button><span class="rating">★ 4.5</span><h4>Chicken Tacos</h4><p>Spiced grilled chicken in soft tacos with salsa.</p><span class="tag">Mexican</span></div>
+            </a>
+            <a class="card" href="/recipe/52952" data-name="falafel wrap" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/y3uxpq1487348960.jpg" alt="Falafel Wrap"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Falafel Wrap')">♥</button><span class="rating">★ 4.5</span><h4>Falafel Wrap</h4><p>Crispy falafel with hummus and tahini in a warm wrap.</p><span class="tag">Middle Eastern</span></div>
+            </a>
+            <a class="card" href="/recipe/52829" data-name="veggie burger" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/xutquv1505330523.jpg" alt="Veggie Burger"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Veggie Burger')">♥</button><span class="rating">★ 4.3</span><h4>Veggie Burger</h4><p>Juicy plant-based patty with lettuce and special sauce.</p><span class="tag">American</span></div>
+            </a>
+            <a class="card" href="/recipe/52807" data-name="paneer butter masala" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/1548772327.jpg" alt="Paneer Butter Masala"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Paneer Butter Masala')">♥</button><span class="rating">★ 4.7</span><h4>Paneer Butter Masala</h4><p>Soft paneer in a rich creamy tomato butter sauce.</p><span class="tag">Indian</span></div>
+            </a>
+            <a class="card" href="/recipe/52772" data-name="veg noodles" data-type="veg" data-fav="false">
+                <div class="card-img"><img src="https://www.themealdb.com/images/media/meals/wvpsxx1468256321.jpg" alt="Veg Noodles"></div>
+                <div class="card-body"><button class="fav-btn" onclick="event.preventDefault();toggleFav(this,'Veg Noodles')">♥</button><span class="rating">★ 4.4</span><h4>Veg Noodles</h4><p>Stir-fried noodles with fresh vegetables and sesame oil.</p><span class="tag">Asian</span></div>
+            </a>
         </div>
     </section>
 
@@ -565,6 +620,39 @@
             if (!dropdown.contains(e.target)) {
                 document.getElementById('dropdownMenu').classList.remove('open');
             }
+            const wrapper = document.querySelector('.search-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('historyDropdown').classList.remove('show');
+            }
+        });
+
+        function showHistory() {
+            fetch('/get_history')
+                .then(res => res.json())
+                .then(data => {
+                    const dropdown = document.getElementById('historyDropdown');
+                    if (!data.history || data.history.length === 0) return;
+                    dropdown.innerHTML = data.history.map(item => `
+                        <div class="history-item" onclick="selectHistory('${item}')">
+                            <span class="h-icon">🕐</span>
+                            <span>${item}</span>
+                        </div>
+                    `).join('');
+                    dropdown.classList.add('show');
+                });
+        }
+
+        function selectHistory(query) {
+            document.getElementById('searchInput').value = query;
+            document.getElementById('historyDropdown').classList.remove('show');
+            searchRecipes();
+        }
+
+        document.addEventListener('click', function(e) {
+            const dropdown = document.querySelector('.dropdown');
+            if (!dropdown.contains(e.target)) {
+                document.getElementById('dropdownMenu').classList.remove('open');
+            }
         });
 
         function handleKey(e) {
@@ -578,6 +666,8 @@
             if (!query) {
                 document.getElementById('searchResults').classList.remove('show');
                 document.getElementById('searchResults').innerHTML = '';
+                document.getElementById('recipeCards').style.display = 'flex';
+                document.querySelector('.section-header').style.display = 'flex';
                 applyFilters();
                 return;
             }
@@ -589,7 +679,9 @@
                 body: 'query=' + encodeURIComponent(query)
             });
 
-            applyFilters();
+            // Hide default cards, show API results
+            document.getElementById('recipeCards').style.display = 'none';
+            document.querySelector('.section-header').style.display = 'none';
 
             const loading = document.getElementById('searchLoading');
             const results = document.getElementById('searchResults');

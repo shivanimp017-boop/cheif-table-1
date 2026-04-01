@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Chef's Table</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background-color: #000; color: #fff; font-family: 'Georgia', serif; min-height: 100vh; padding-bottom: 80px; }
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 60px; border-bottom: 1px solid #333; }
+        .logo { font-size: 1.8rem; font-weight: bold; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; color: #fff; }
+        .logo span { color: #c9a84c; }
+        .back-btn { display: inline-block; padding: 8px 24px; border: 1px solid #444; color: #aaa; text-decoration: none; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; transition: all 0.3s; }
+        .back-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+        .container { max-width: 600px; margin: 50px auto; padding: 0 20px; }
+        .page-title { text-align: center; margin-bottom: 40px; }
+        .page-title h2 { font-size: 2rem; letter-spacing: 5px; text-transform: uppercase; }
+        .page-title h2 span { color: #c9a84c; }
+        .divider { width: 60px; height: 2px; background: #c9a84c; margin: 15px auto 0; }
+        .notif-item { display: flex; gap: 16px; align-items: flex-start; background: #111; border: 1px solid #222; padding: 18px 20px; margin-bottom: 12px; transition: border 0.3s; }
+        .notif-item:hover { border-color: #c9a84c; }
+        .notif-item.unread { border-left: 3px solid #c9a84c; }
+        .notif-icon { font-size: 1.8rem; flex-shrink: 0; }
+        .notif-body { flex: 1; }
+        .notif-body h4 { font-size: 0.9rem; letter-spacing: 1px; color: #fff; margin-bottom: 5px; }
+        .notif-body p { font-size: 0.8rem; color: #777; line-height: 1.5; }
+        .notif-time { font-size: 0.7rem; color: #555; margin-top: 6px; letter-spacing: 1px; }
+        .empty-msg { text-align: center; color: #555; padding: 60px 20px; font-size: 0.9rem; letter-spacing: 1px; }
+        .clear-btn { display: block; width: 100%; margin-top: 20px; padding: 12px; border: 1px solid #444; color: #777; background: transparent; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.3s; font-family: 'Georgia', serif; }
+        .clear-btn:hover { border-color: #e53935; color: #e53935; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #111; border-top: 1px solid #333; display: flex; justify-content: space-around; align-items: center; padding: 12px 0; z-index: 999; }
+        .bottom-nav a { display: flex; flex-direction: column; align-items: center; gap: 5px; text-decoration: none; color: #777; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; transition: color 0.3s; }
+        .bottom-nav a:hover, .bottom-nav a.active { color: #c9a84c; }
+        .bottom-nav .icon { font-size: 1.6rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/" class="logo">Chef<span>'s</span> Table</a>
+        <a href="/dashboard" class="back-btn">← Back</a>
+    </nav>
+
+    <div class="container">
+        <div class="page-title">
+            <h2>🔔 <span>Notifications</span></h2>
+            <div class="divider"></div>
+        </div>
+
+        {% if notifications %}
+            {% for n in notifications %}
+            <div class="notif-item {{ 'unread' if n.unread else '' }}">
+                <div class="notif-icon">{{ n.icon }}</div>
+                <div class="notif-body">
+                    <h4>{{ n.title }}</h4>
+                    <p>{{ n.message }}</p>
+                    <div class="notif-time">{{ n.time }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            <form method="POST" action="/clear_notifications">
+                <button type="submit" class="clear-btn">🗑️ Clear All Notifications</button>
+            </form>
+        {% else %}
+            <div class="empty-msg">🔔 No notifications yet.<br>Start searching and liking recipes!</div>
+        {% endif %}
+    </div>
+
+    <div class="bottom-nav">
+        <a href="/dashboard"><span class="icon">🏠</span><span>Home</span></a>
+        <a href="/detect"><span class="icon">📷</span><span>Camera</span></a>
+        <a href="/profile"><span class="icon">👤</span><span>Profile</span></a>
+    </div>
+</body>
+</html>

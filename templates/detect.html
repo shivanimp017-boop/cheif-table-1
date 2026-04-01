@@ -203,25 +203,66 @@
             letter-spacing: 3px;
             text-transform: uppercase;
             color: #c9a84c;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
-        .result-box p { color: #aaa; font-size: 0.9rem; line-height: 1.7; }
+        .result-box h3 span { color: #fff; }
 
-        .result-tags { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .nutrition-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
 
-        .result-tags a {
-            padding: 5px 14px;
-            border: 1px solid #c9a84c;
+        .nutrition-item {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 14px 16px;
+            text-align: center;
+            min-width: 100px;
+            flex: 1;
+            transition: border 0.3s;
+        }
+
+        .nutrition-item:hover { border-color: #c9a84c; }
+
+        .nutrition-item .nut-icon { font-size: 1.5rem; margin-bottom: 6px; }
+
+        .nutrition-item .nut-value {
+            font-size: 1.1rem;
             color: #c9a84c;
-            font-size: 0.72rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            text-decoration: none;
-            transition: all 0.3s;
+            font-weight: bold;
+            margin-bottom: 4px;
         }
 
-        .result-tags a:hover { background: #c9a84c; color: #000; }
+        .nutrition-item .nut-label {
+            font-size: 0.65rem;
+            color: #777;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Food name input */
+        .food-input-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .food-input-row input {
+            flex: 1;
+            padding: 12px 15px;
+            background: #111;
+            border: 1px solid #444;
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: 'Georgia', serif;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        .food-input-row input:focus { border-color: #c9a84c; }
 
         .loading { color: #888; text-align: center; padding: 20px; letter-spacing: 2px; font-size: 0.85rem; display: none; }
 
@@ -254,6 +295,30 @@
 
         .bottom-nav a:hover, .bottom-nav a.active { color: #c9a84c; }
         .bottom-nav .icon { font-size: 1.6rem; }
+
+        /* Quick Links */
+        .quick-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .quick-link {
+            flex: 1;
+            min-width: 140px;
+            background: #111;
+            border: 1px solid #333;
+            padding: 20px 15px;
+            text-align: center;
+            text-decoration: none;
+            color: #ccc;
+            transition: all 0.3s;
+        }
+
+        .quick-link:hover { border-color: #c9a84c; color: #c9a84c; }
+        .quick-link .ql-icon { font-size: 2rem; display: block; margin-bottom: 8px; }
+        .quick-link .ql-label { font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -274,18 +339,18 @@
 
         <!-- Option Buttons -->
         <div class="options">
-            <button class="option-btn active" id="uploadBtn" onclick="switchPanel('upload')">
+            <button class="option-btn" id="uploadBtn" onclick="switchPanel('upload')">
                 <span class="btn-icon">📁</span>
                 Upload Photo
             </button>
-            <button class="option-btn" id="cameraBtn" onclick="switchPanel('camera')">
+            <button class="option-btn active" id="cameraBtn" onclick="switchPanel('camera')">
                 <span class="btn-icon">📸</span>
                 Take Photo
             </button>
         </div>
 
         <!-- Upload Panel -->
-        <div class="panel active" id="uploadPanel">
+        <div class="panel" id="uploadPanel">
             <div class="upload-area" id="uploadArea">
                 <input type="file" id="fileInput" accept="image/*" onchange="previewUpload(event)">
                 <div class="up-icon">🖼️</div>
@@ -301,7 +366,7 @@
         </div>
 
         <!-- Camera Panel -->
-        <div class="panel" id="cameraPanel">
+        <div class="panel active" id="cameraPanel">
             <div id="videoContainer">
                 <video id="video" autoplay playsinline muted></video>
             </div>
@@ -314,13 +379,21 @@
             </div>
         </div>
 
+        <!-- Food Name Input -->
+        <div class="food-input-row">
+            <input type="text" id="foodNameInput" placeholder="Enter food name e.g. chicken, pasta, pizza...">
+            <button class="action-btn" style="flex:0; white-space:nowrap;" onclick="getNutrition()">🔍 Get Nutrition</button>
+        </div>
+
         <!-- Loading -->
-        <div class="loading" id="loadingMsg">🔍 Analysing image...</div>
+        <div class="loading" id="loadingMsg">🔍 Analysing...</div>
 
         <!-- Result -->
         <div class="result-box" id="resultBox">
-            <h3>🍽️ Detected Food</h3>
-            <p id="resultText"></p>
+            <h3>🍽️ Detected Food: <span id="foodName"></span></h3>
+
+            <div class="nutrition-grid" id="nutritionGrid"></div>
+
             <div class="result-tags" id="resultTags"></div>
         </div>
 
@@ -335,6 +408,9 @@
     <script>
         let stream = null;
         let capturedDataUrl = null;
+
+        // Auto start camera when page loads
+        window.onload = function() { startCamera(); };
 
         function switchPanel(type) {
             document.getElementById('uploadPanel').classList.remove('active');
@@ -404,6 +480,26 @@
             img.style.display = 'block';
             video.style.display = 'none';
             stopCamera();
+
+            // Auto detect food from captured photo
+            document.getElementById('loadingMsg').style.display = 'block';
+            document.getElementById('resultBox').classList.remove('show');
+            fetch('/detect_food', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: capturedDataUrl })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loadingMsg').style.display = 'none';
+                if (data.food) {
+                    document.getElementById('foodNameInput').value = data.food;
+                    showNutrition(data);
+                }
+            })
+            .catch(() => {
+                document.getElementById('loadingMsg').style.display = 'none';
+            });
         }
 
         function retakePhoto() {
@@ -421,6 +517,25 @@
                 const img = document.getElementById('uploadPreview');
                 img.src = ev.target.result;
                 img.style.display = 'block';
+                // Auto detect food from image
+                document.getElementById('loadingMsg').style.display = 'block';
+                document.getElementById('resultBox').classList.remove('show');
+                fetch('/detect_food', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: ev.target.result })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('loadingMsg').style.display = 'none';
+                    if (data.food) {
+                        document.getElementById('foodNameInput').value = data.food;
+                        showNutrition(data);
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('loadingMsg').style.display = 'none';
+                });
             };
             reader.readAsDataURL(file);
         }
@@ -431,50 +546,54 @@
             document.getElementById('resultBox').classList.remove('show');
         }
 
-        function detectFood(source) {
-            let imageData = null;
-
-            if (source === 'upload') {
-                const file = document.getElementById('fileInput').files[0];
-                if (!file) { alert('Please select an image first.'); return; }
-                const reader = new FileReader();
-                reader.onload = ev => sendDetect(ev.target.result);
-                reader.readAsDataURL(file);
-                return;
-            } else {
-                if (!capturedDataUrl) { alert('Please capture a photo first.'); return; }
-                sendDetect(capturedDataUrl);
-            }
+        function showNutrition(data) {
+            const box = document.getElementById('resultBox');
+            box.classList.add('show');
+            document.getElementById('foodName').textContent = data.food;
+            const n = data.nutrition;
+            document.getElementById('nutritionGrid').innerHTML = `
+                <div class="nutrition-item"><div class="nut-icon">&#128293;</div><div class="nut-value">${n.calories}</div><div class="nut-label">Calories</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#128170;</div><div class="nut-value">${n.protein}g</div><div class="nut-label">Protein</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#129704;</div><div class="nut-value">${n.fat}g</div><div class="nut-label">Fat</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#127838;</div><div class="nut-value">${n.carbs}g</div><div class="nut-label">Carbs</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#127807;</div><div class="nut-value">${n.fiber}g</div><div class="nut-label">Fiber</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#127818;</div><div class="nut-value">${n.vitamin_c}mg</div><div class="nut-label">Vitamin C</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#129365;</div><div class="nut-value">${n.vitamin_a}mcg</div><div class="nut-label">Vitamin A</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#129748;</div><div class="nut-value">${n.calcium}mg</div><div class="nut-label">Calcium</div></div>
+                <div class="nutrition-item"><div class="nut-icon">&#129706;</div><div class="nut-value">${n.iron}mg</div><div class="nut-label">Iron</div></div>
+            `;
         }
 
-        function sendDetect(dataUrl) {
+        function getNutrition() {
+            const food = document.getElementById('foodNameInput').value.trim();
+            if (!food) { alert('Please enter a food name.'); return; }
+            sendDetect(food);
+        }
+
+        function detectFood(source) {
+            const food = document.getElementById('foodNameInput').value.trim();
+            if (!food) { alert('Please enter the food name in the box below first.'); return; }
+            sendDetect(food);
+        }
+
+        function sendDetect(foodName) {
             document.getElementById('loadingMsg').style.display = 'block';
             document.getElementById('resultBox').classList.remove('show');
 
             fetch('/detect_food', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: dataUrl })
+                body: JSON.stringify({ food_name: foodName })
             })
             .then(res => res.json())
             .then(data => {
                 document.getElementById('loadingMsg').style.display = 'none';
-                const box = document.getElementById('resultBox');
-                box.classList.add('show');
-                document.getElementById('resultText').textContent = data.description || 'Food detected!';
-                const tags = document.getElementById('resultTags');
-                tags.innerHTML = (data.keywords || []).map(k =>
-                    `<a href="/dashboard?q=${encodeURIComponent(k)}" onclick="searchFromDetect('${k}')">${k}</a>`
-                ).join('');
+                showNutrition(data);
             })
             .catch(() => {
                 document.getElementById('loadingMsg').style.display = 'none';
-                alert('Detection failed. Try again.');
+                alert('Could not fetch nutrition. Try again.');
             });
-        }
-
-        function searchFromDetect(keyword) {
-            localStorage.setItem('detectSearch', keyword);
         }
     </script>
 

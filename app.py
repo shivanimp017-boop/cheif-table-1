@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import os, json
 from rl_agent import get_recommendations, update_reward
+from indian_recipes import INDIAN_RECIPES, get_indian_recipe
 
 app = Flask(__name__)
 app.secret_key = 'chefs_table_secret_key'
@@ -109,6 +110,15 @@ def profile():
     my_recipes = user.get('my_recipes', [])
     return render_template('profile.html', username=username, user=user, search_history=search_history, favourites=favourites, my_recipes=my_recipes)
 
+@app.route('/get_history')
+@login_required
+def get_history():
+    from flask import jsonify
+    users = load_users()
+    username = session['username']
+    history = users.get(username, {}).get('search_history', [])
+    return jsonify({'history': history})
+
 @app.route('/save_search', methods=['POST'])
 @login_required
 def save_search():
@@ -139,6 +149,14 @@ def toggle_favourite():
         save_users(users)
     return ('', 204)
 
+@app.route('/indian_recipe/<recipe_key>')
+@login_required
+def indian_recipe(recipe_key):
+    recipe = INDIAN_RECIPES.get(recipe_key)
+    if not recipe:
+        return redirect(url_for('dashboard'))
+    return render_template('indian_recipe.html', recipe=recipe)
+
 @app.route('/recipe/<meal_id>')
 @login_required
 def recipe(meal_id):
@@ -165,12 +183,13 @@ def search():
     try:
         meals = []
         seen = set()
+        results = []
 
         def add_meals(meal_list, full=True):
             for meal in meal_list:
                 if meal['idMeal'] not in seen:
                     if not full:
-                        rd = requests.get(f"https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal['idMeal']}", timeout=5).json()
+                        rd = requests.get(f"https://www.themealdb.com/api/json/v1/1/lookup.php?i={meal['idMeal']}", timeout=10).json()
                         if rd.get('meals'):
                             meals.append(rd['meals'][0])
                             seen.add(meal['idMeal'])
@@ -179,32 +198,54 @@ def search():
                         seen.add(meal['idMeal'])
 
         # 1. Search by meal name
-        r1 = requests.get(f'https://www.themealdb.com/api/json/v1/1/search.php?s={requests.utils.quote(query)}', timeout=5).json()
-        if r1.get('meals'): add_meals(r1['meals'])
+        try:
+            r1 = requests.get(f'https://www.themealdb.com/api/json/v1/1/search.php?s={requests.utils.quote(query)}', timeout=10).json()
+            if r1.get('meals'): add_meals(r1['meals'])
+        except: pass
 
         # 2. Search by category
-        r2 = requests.get(f'https://www.themealdb.com/api/json/v1/1/filter.php?c={requests.utils.quote(query)}', timeout=5).json()
-        if r2.get('meals'): add_meals(r2['meals'][:6], full=False)
+        try:
+            r2 = requests.get(f'https://www.themealdb.com/api/json/v1/1/filter.php?c={requests.utils.quote(query)}', timeout=10).json()
+            if r2.get('meals'): add_meals(r2['meals'][:6], full=False)
+        except: pass
 
         # 3. Search by area/cuisine
-        r3 = requests.get(f'https://www.themealdb.com/api/json/v1/1/filter.php?a={requests.utils.quote(query)}', timeout=5).json()
-        if r3.get('meals'): add_meals(r3['meals'][:6], full=False)
+        try:
+            r3 = requests.get(f'https://www.themealdb.com/api/json/v1/1/filter.php?a={requests.utils.quote(query)}', timeout=10).json()
+            if r3.get('meals'): add_meals(r3['meals'][:6], full=False)
+        except: pass
 
-        if not meals:
-            return {'items': []}
+        if meals:
+            results = []
+            for meal in meals[:8]:
+                results.append({
+                    'id': meal['idMeal'],
+                    'title': meal['strMeal'],
+                    'category': meal.get('strCategory', ''),
+                    'area': meal.get('strArea', ''),
+                    'thumb': meal.get('strMealThumb', ''),
+                    'instructions': (meal.get('strInstructions') or '')[:150] + '...',
+                    'link': f"/recipe/{meal['idMeal']}"
+                })
 
-        results = []
-        for meal in meals[:8]:
-            results.append({
-                'id': meal['idMeal'],
-                'title': meal['strMeal'],
-                'category': meal.get('strCategory', ''),
-                'area': meal.get('strArea', ''),
-                'thumb': meal.get('strMealThumb', ''),
-                'instructions': (meal.get('strInstructions') or '')[:150] + '...',
-                'link': f"/recipe/{meal['idMeal']}"
-            })
-        return {'items': results}
+        # Always also check Indian recipes database and merge
+        q = query.lower()
+        seen_titles = {r['title'].lower() for r in results} if meals else set()
+        for key, val in INDIAN_RECIPES.items():
+            if key in q or q in key or q == key:
+                if val['title'].lower() not in seen_titles:
+                    results.append({
+                        'id': key,
+                        'title': val['title'],
+                        'category': val['category'],
+                        'area': val['area'],
+                        'thumb': val['thumb'],
+                        'instructions': val['instructions'][0] if val.get('instructions') else '',
+                        'link': f"/indian_recipe/{key}"
+                    })
+
+        return {'items': results[:8] if results else []}
+
     except Exception as e:
         return {'items': [], 'error': str(e)}
 
@@ -243,28 +284,138 @@ def detect():
 @login_required
 def detect_food():
     from flask import jsonify
-    import base64, requests
+    import requests, base64
     data = request.get_json()
+    food_name = data.get('food_name', '').strip()
     image_data = data.get('image', '')
-    if ',' in image_data:
-        image_data = image_data.split(',')[1]
-    try:
-        # Use Clarifai food recognition model (free)
-        headers = { 'Authorization': 'Key YOUR_CLARIFAI_KEY', 'Content-Type': 'application/json' }
-        payload = {
-            'inputs': [{
-                'data': { 'image': { 'base64': image_data } }
-            }]
-        }
-        r = requests.post('https://api.clarifai.com/v2/models/bd367be194cf45149e75f01d59f77ba7/outputs', json=payload, headers=headers, timeout=10)
-        result = r.json()
-        concepts = result['outputs'][0]['data']['concepts']
-        keywords = [c['name'] for c in concepts[:5] if c['value'] > 0.7]
-        description = f"Detected: {', '.join(keywords[:3])}" if keywords else 'Could not identify food.'
-        return jsonify({'description': description, 'keywords': keywords})
-    except Exception as e:
-        # Fallback: return generic message
-        return jsonify({'description': 'Image received. Try searching manually.', 'keywords': ['chicken', 'pasta', 'salad']})
+
+    # If image is provided, detect food from image first
+    if image_data and not food_name:
+        try:
+            if ',' in image_data:
+                image_data = image_data.split(',')[1]
+            image_bytes = base64.b64decode(image_data)
+
+            # Use Imagga API for food detection
+            api_key    = 'acc_e1ef3474774f3bc'
+            api_secret = '7bfa1558c737b27a546c86f2c6a2a81f'
+            response = requests.post(
+                'https://api.imagga.com/v2/tags',
+                auth=(api_key, api_secret),
+                files={'image': ('food.jpg', image_bytes, 'image/jpeg')},
+                timeout=10
+            )
+            result = response.json()
+            tags = result.get('result', {}).get('tags', [])
+            food_tags = [t['tag']['en'] for t in tags[:5] if t['confidence'] > 30]
+            food_name = food_tags[0] if food_tags else 'food'
+        except:
+            food_name = 'food'
+
+    if not food_name:
+        return jsonify({'error': 'No food detected'})
+
+    return jsonify({'food': food_name, 'nutrition': get_estimated_nutrition(food_name)})
+
+def get_estimated_nutrition(food_name):
+    """Estimated nutrition per 100g for common foods"""
+    food = food_name.lower()
+    db = {
+        'chicken':  {'calories':165,'protein':31,'fat':3.6,'carbs':0,'fiber':0,'sugar':0,'calcium':15,'iron':1.0,'vitamin_c':0,'vitamin_a':9},
+        'rice':     {'calories':130,'protein':2.7,'fat':0.3,'carbs':28,'fiber':0.4,'sugar':0,'calcium':10,'iron':0.2,'vitamin_c':0,'vitamin_a':0},
+        'pasta':    {'calories':158,'protein':5.8,'fat':0.9,'carbs':31,'fiber':1.8,'sugar':0.6,'calcium':7,'iron':0.5,'vitamin_c':0,'vitamin_a':0},
+        'salmon':   {'calories':208,'protein':20,'fat':13,'carbs':0,'fiber':0,'sugar':0,'calcium':12,'iron':0.3,'vitamin_c':3,'vitamin_a':12},
+        'pizza':    {'calories':266,'protein':11,'fat':10,'carbs':33,'fiber':2.3,'sugar':3.6,'calcium':200,'iron':2.5,'vitamin_c':1,'vitamin_a':50},
+        'salad':    {'calories':15, 'protein':1.3,'fat':0.2,'carbs':2.9,'fiber':1.8,'sugar':1.2,'calcium':36,'iron':0.9,'vitamin_c':9,'vitamin_a':370},
+        'burger':   {'calories':295,'protein':17,'fat':14,'carbs':24,'fiber':1,'sugar':5,'calcium':100,'iron':2.7,'vitamin_c':1,'vitamin_a':20},
+        'egg':      {'calories':155,'protein':13,'fat':11,'carbs':1.1,'fiber':0,'sugar':1.1,'calcium':56,'iron':1.8,'vitamin_c':0,'vitamin_a':160},
+        'banana':   {'calories':89, 'protein':1.1,'fat':0.3,'carbs':23,'fiber':2.6,'sugar':12,'calcium':5,'iron':0.3,'vitamin_c':8.7,'vitamin_a':3},
+        'apple':    {'calories':52, 'protein':0.3,'fat':0.2,'carbs':14,'fiber':2.4,'sugar':10,'calcium':6,'iron':0.1,'vitamin_c':4.6,'vitamin_a':3},
+    }
+    for key in db:
+        if key in food:
+            return db[key]
+    return {'calories':200,'protein':8,'fat':7,'carbs':25,'fiber':2,'sugar':3,'calcium':50,'iron':1.5,'vitamin_c':5,'vitamin_a':20}
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    users = load_users()
+    username = session['username']
+    user = users.get(username, {})
+    success = False
+    error = None
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'profile':
+            users[username]['name']  = request.form.get('name', '').strip()
+            users[username]['email'] = request.form.get('email', '').strip()
+            users[username]['phone'] = request.form.get('phone', '').strip()
+            save_users(users)
+            success = True
+        elif action == 'password':
+            current = request.form.get('current_password')
+            new_pw  = request.form.get('new_password')
+            confirm = request.form.get('confirm_password')
+            if users[username]['password'] != current:
+                error = 'Current password is incorrect.'
+            elif new_pw != confirm:
+                error = 'New passwords do not match.'
+            else:
+                users[username]['password'] = new_pw
+                save_users(users)
+                success = True
+    return render_template('settings.html', user=users.get(username, {}), success=success, error=error)
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    users = load_users()
+    username = session['username']
+    user = users.get(username, {})
+    notifs = user.get('notifications', [])
+    if not notifs:
+        from datetime import datetime
+        notifs = [
+            {'icon': '🤖', 'title': 'RL Agent Active', 'message': 'Your AI agent is learning your food preferences!', 'time': 'Just now', 'unread': True},
+            {'icon': '🍽️', 'title': 'Welcome to Chef Table!', 'message': 'Start searching recipes and liking them to train your AI.', 'time': 'Today', 'unread': True},
+        ]
+    return render_template('notifications.html', notifications=notifs)
+
+@app.route('/clear_notifications', methods=['POST'])
+@login_required
+def clear_notifications():
+    users = load_users()
+    users[session['username']]['notifications'] = []
+    save_users(users)
+    return redirect(url_for('notifications'))
+
+@app.route('/rl_stats')
+@login_required
+def rl_stats():
+    from rl_agent import get_q_table
+    username = session['username']
+    q_table = get_q_table(username)
+    q_scores = sorted(q_table.items(), key=lambda x: x[1], reverse=True)
+    liked    = sum(1 for v in q_table.values() if v > 0)
+    disliked = sum(1 for v in q_table.values() if v < 0)
+    accuracy = round((liked / max(liked + disliked, 1)) * 100)
+    return render_template('rl_stats.html', q_scores=q_scores, total_recipes=len(q_table), liked=liked, disliked=disliked, accuracy=accuracy)
+
+@app.route('/quiz')
+@login_required
+def quiz():
+    return render_template('quiz.html')
+
+@app.route('/get_recommendations')
+@login_required
+def get_recs():
+    from flask import jsonify
+    users = load_users()
+    username = session['username']
+    user = users.get(username, {})
+    recs = get_recommendations(username, user)
+    return jsonify({'items': recs})
 
 @app.route('/veg')
 @login_required
