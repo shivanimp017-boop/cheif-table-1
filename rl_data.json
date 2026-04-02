@@ -98,5 +98,28 @@
         "interactions": 6,
         "veg_score": 0,
         "nonveg_score": 4
+    },
+    "openenv_agent": {
+        "q_table": {
+            "Grilled Salmon": 0.285,
+            "Pasta Carbonara": 0.0,
+            "Beef Steak": 0.0,
+            "Caesar Salad": 0.0,
+            "Chicken Curry": 0.0,
+            "Chocolate Lava Cake": 0.0,
+            "Sushi Platter": 0.0,
+            "Margherita Pizza": 0.28218750000000004,
+            "Butter Chicken": 0.0,
+            "Dal Tadka": 0.0,
+            "Paneer Butter Masala": 0.0,
+            "Veg Noodles": 0.0,
+            "Garlic Shrimp": 0.0,
+            "Chicken Tacos": 0.0,
+            "Falafel Wrap": 0.0,
+            "Veggie Burger": 0.0
+        },
+        "interactions": 3,
+        "veg_score": 1,
+        "nonveg_score": 1
     }
 }
