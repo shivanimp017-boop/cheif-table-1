@@ -75,5 +75,28 @@
         "Chicken Tacos": 0.0,
         "Falafel Wrap": 0.0,
         "Veggie Burger": 0.0
+    },
+    "demo_user": {
+        "q_table": {
+            "Grilled Salmon": 0.0,
+            "Pasta Carbonara": 0.0,
+            "Beef Steak": -0.009391019432194739,
+            "Caesar Salad": 0.0,
+            "Chicken Curry": 0.5161415922281248,
+            "Chocolate Lava Cake": 0.0,
+            "Sushi Platter": 0.0,
+            "Margherita Pizza": 0.0,
+            "Butter Chicken": 0.6392779215578436,
+            "Dal Tadka": 0.0,
+            "Paneer Butter Masala": 0.0,
+            "Veg Noodles": 0.0,
+            "Garlic Shrimp": 0.0,
+            "Chicken Tacos": 0.0,
+            "Falafel Wrap": 0.0,
+            "Veggie Burger": 0.0
+        },
+        "interactions": 6,
+        "veg_score": 0,
+        "nonveg_score": 4
     }
 }

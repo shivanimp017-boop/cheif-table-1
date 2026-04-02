@@ -1,4 +1,4 @@
 flask
 requests
+pyngrok
 huggingface_hub
-openenv-core
