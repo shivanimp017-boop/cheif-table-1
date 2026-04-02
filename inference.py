@@ -1,98 +1,90 @@
-from openenv.core import Environment, Observation, Action
+from openenv.core import Environment, Action, Observation, create_fastapi_app
 from rl_agent import get_recommendations, update_reward, get_q_table, RECIPE_NAMES, CATEGORIES
+from pydantic import BaseModel
 from typing import Optional, Any
 import random
+import uvicorn
 
+
+# ── Action & Observation models ──────────────────────────────────────────────
+
+class RecipeAction(Action):
+    recipe: str = ""
+    feedback: str = "like"   # "like" or "dislike"
+
+
+class RecipeObservation(Observation):
+    recommendations: list
+    q_values: dict
+    step: int
+    total_reward: float
+    reward: float = 0.0
+    done: bool = False
+
+
+# ── Environment ───────────────────────────────────────────────────────────────
 
 class RecipeRecommendationEnv(Environment):
     """
-    Chef's Table AI - Recipe Recommendation RL Environment
-    State:  User Q-table + current recommendations
-    Action: {'recipe': str, 'feedback': 'like' | 'dislike'}
-    Reward: +1.0 like, -0.5 dislike
+    Chef's Table AI — Recipe Recommendation RL Environment
+    Q-Learning agent learns user food preferences over time.
     """
+
+    SUPPORTS_CONCURRENT_SESSIONS = True
 
     def __init__(self):
         super().__init__()
-        self.username = "openenv_agent"
-        self.step_count = 0
-        self.max_steps = 20
+        self.username     = "openenv_agent"
+        self.step_count   = 0
+        self.max_steps    = 20
         self.total_reward = 0.0
-        self._state = {}
+        self._current_state = self._build_obs(0.0, False)
 
     @property
-    def state(self):
-        return self._state
+    def state(self) -> RecipeObservation:
+        return self._current_state
 
-    def reset(self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs) -> dict:
-        self.step_count = 0
+    def reset(self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs) -> RecipeObservation:
+        self.step_count   = 0
         self.total_reward = 0.0
-        self._state = self._build_state()
-        return self._state
+        self._current_state = self._build_obs(0.0, False)
+        return self._current_state
 
-    def step(self, action: Any, timeout_s: Optional[float] = None, **kwargs) -> dict:
-        if isinstance(action, dict):
-            recipe   = action.get('recipe', random.choice(RECIPE_NAMES))
-            feedback = action.get('feedback', 'like')
-        else:
-            recipe   = random.choice(RECIPE_NAMES)
-            feedback = 'like'
-
-        if recipe not in RECIPE_NAMES:
-            recipe = random.choice(RECIPE_NAMES)
+    def step(self, action: RecipeAction, timeout_s: Optional[float] = None, **kwargs) -> RecipeObservation:
+        recipe   = action.recipe   if action.recipe   in RECIPE_NAMES else random.choice(RECIPE_NAMES)
+        feedback = action.feedback if action.feedback in ('like', 'dislike') else 'like'
 
         reward = 1.0 if feedback == 'like' else -0.5
         update_reward(self.username, recipe, reward)
 
         self.total_reward += reward
-        self.step_count += 1
-        self._state = self._build_state()
+        self.step_count   += 1
 
         done = self.step_count >= self.max_steps
+        self._current_state = self._build_obs(reward, done)
+        return self._current_state
 
-        return {
-            'state': self._state,
-            'reward': reward,
-            'done': done,
-            'info': {
-                'recipe': recipe,
-                'feedback': feedback,
-                'total_reward': round(self.total_reward, 3),
-                'step': self.step_count,
-            }
-        }
-
-    def _build_state(self) -> dict:
+    def _build_obs(self, reward: float, done: bool) -> RecipeObservation:
         q    = get_q_table(self.username)
         recs = get_recommendations(self.username, top_n=4)
-        return {
-            'recommendations': [r['name'] for r in recs],
-            'q_values': {k: round(v, 3) for k, v in q.items()},
-            'step': self.step_count,
-            'total_reward': round(self.total_reward, 3),
-        }
+        return RecipeObservation(
+            recommendations = [r['name'] for r in recs],
+            q_values        = {k: round(v, 3) for k, v in q.items()},
+            step            = self.step_count,
+            total_reward    = round(self.total_reward, 3),
+            reward          = reward,
+            done            = done,
+        )
 
 
-# Standard OpenEnv entry point
-env = RecipeRecommendationEnv()
+# ── FastAPI app (OpenEnv standard) ────────────────────────────────────────────
+
+app = create_fastapi_app(
+    env              = RecipeRecommendationEnv,
+    action_cls       = RecipeAction,
+    observation_cls  = RecipeObservation,
+)
 
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("Chef's Table AI - OpenEnv Test")
-    print("=" * 50)
-
-    state = env.reset()
-    print("Reset OK")
-    print("Recommendations:", state['recommendations'])
-
-    for i in range(3):
-        action = {
-            'recipe': random.choice(RECIPE_NAMES),
-            'feedback': random.choice(['like', 'dislike'])
-        }
-        obs = env.step(action)
-        print(f"Step {i+1}: {obs['info']['recipe']} -> {obs['info']['feedback']} reward={obs['reward']}")
-
-    print("Total reward:", env.total_reward)
-    print("Test PASSED!")
+    uvicorn.run(app, host="0.0.0.0", port=7860)
