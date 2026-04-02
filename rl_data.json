@@ -1,21 +1,26 @@
 {
     "shivani_mp": {
-        "Grilled Salmon": 0.51,
-        "Pasta Carbonara": 0.657,
-        "Beef Steak": 0.51,
-        "Caesar Salad": 0.51,
-        "Chicken Curry": 0.3,
-        "Chocolate Lava Cake": 0.0,
-        "Sushi Platter": 0.20700000000000002,
-        "Margherita Pizza": 0.657,
-        "Butter Chicken": 0.0,
-        "Dal Tadka": 0.0,
-        "Paneer Butter Masala": 0.0,
-        "Veg Noodles": 0.0,
-        "Garlic Shrimp": 0.0,
-        "Chicken Tacos": 0.0,
-        "Falafel Wrap": 0.0,
-        "Veggie Burger": 0.0
+        "q_table": {
+            "Grilled Salmon": 0.51,
+            "Pasta Carbonara": 0.657,
+            "Beef Steak": 0.51,
+            "Caesar Salad": 0.51,
+            "Chicken Curry": 0.3,
+            "Chocolate Lava Cake": 0.0,
+            "Sushi Platter": 0.20700000000000002,
+            "Margherita Pizza": 0.657,
+            "Butter Chicken": 0.0,
+            "Dal Tadka": 0.0,
+            "Paneer Butter Masala": 0.0,
+            "Veg Noodles": 0.0,
+            "Garlic Shrimp": 0.0,
+            "Chicken Tacos": 0.0,
+            "Falafel Wrap": 0.0,
+            "Veggie Burger": 0.0
+        },
+        "interactions": 0,
+        "veg_score": 0,
+        "nonveg_score": 0
     },
     "Shivanimp": {
         "Grilled Salmon": 0.0,

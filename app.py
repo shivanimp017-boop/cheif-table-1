@@ -296,7 +296,6 @@ def detect_food():
                 image_data = image_data.split(',')[1]
             image_bytes = base64.b64decode(image_data)
 
-            # Use Imagga API for food detection
             api_key    = 'acc_e1ef3474774f3bc'
             api_secret = '7bfa1558c737b27a546c86f2c6a2a81f'
             response = requests.post(
@@ -307,15 +306,24 @@ def detect_food():
             )
             result = response.json()
             tags = result.get('result', {}).get('tags', [])
-            food_tags = [t['tag']['en'] for t in tags[:5] if t['confidence'] > 30]
-            food_name = food_tags[0] if food_tags else 'food'
-        except:
+            # Filter food-related tags only
+            food_keywords = ['food','dish','meal','cuisine','chicken','beef','fish','rice','pasta','pizza','salad','soup','bread','cake','curry','noodle','burger','taco','sushi','shrimp','vegetable','fruit','meat','egg','cheese']
+            food_tags = []
+            for t in tags:
+                name = t['tag']['en'].lower()
+                conf = t['confidence']
+                if conf > 40 and any(k in name for k in food_keywords):
+                    food_tags.append(name)
+                elif conf > 60:
+                    food_tags.append(name)
+            food_name = food_tags[0] if food_tags else tags[0]['tag']['en'] if tags else 'food'
+        except Exception as e:
             food_name = 'food'
 
     if not food_name:
         return jsonify({'error': 'No food detected'})
 
-    return jsonify({'food': food_name, 'nutrition': get_estimated_nutrition(food_name)})
+    return jsonify({'food': food_name.title(), 'nutrition': get_estimated_nutrition(food_name), 'detected': True})
 
 def get_estimated_nutrition(food_name):
     """Estimated nutrition per 100g for common foods"""

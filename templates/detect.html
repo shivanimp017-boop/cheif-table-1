@@ -332,25 +332,25 @@
         <div style="font-size:3rem; margin-bottom:10px;">📷</div>
         <h2>Detect <span>Food</span></h2>
         <div class="divider"></div>
-        <p>Upload or take a photo to identify the dish and find recipes</p>
+        <p>Upload a photo or type food name to get nutrition details</p>
     </div>
 
     <div class="container">
 
         <!-- Option Buttons -->
         <div class="options">
-            <button class="option-btn" id="uploadBtn" onclick="switchPanel('upload')">
+            <button class="option-btn active" id="uploadBtn" onclick="switchPanel('upload')">
                 <span class="btn-icon">📁</span>
                 Upload Photo
             </button>
-            <button class="option-btn active" id="cameraBtn" onclick="switchPanel('camera')">
+            <button class="option-btn" id="cameraBtn" onclick="switchPanel('camera')">
                 <span class="btn-icon">📸</span>
                 Take Photo
             </button>
         </div>
 
         <!-- Upload Panel -->
-        <div class="panel" id="uploadPanel">
+        <div class="panel active" id="uploadPanel">
             <div class="upload-area" id="uploadArea">
                 <input type="file" id="fileInput" accept="image/*" onchange="previewUpload(event)">
                 <div class="up-icon">🖼️</div>
@@ -360,13 +360,12 @@
             <img id="uploadPreview" class="preview-img">
             <div style="display:flex; gap:12px; margin-top:15px;">
                 <button class="action-btn" onclick="document.getElementById('fileInput').click()">📂 Browse Files</button>
-                <button class="action-btn" onclick="detectFood('upload')">🔍 Detect Food</button>
                 <button class="action-btn red" onclick="clearUpload()">✕ Clear</button>
             </div>
         </div>
 
         <!-- Camera Panel -->
-        <div class="panel active" id="cameraPanel">
+        <div class="panel" id="cameraPanel">
             <div id="videoContainer">
                 <video id="video" autoplay playsinline muted></video>
             </div>
@@ -380,9 +379,12 @@
         </div>
 
         <!-- Food Name Input -->
-        <div class="food-input-row">
-            <input type="text" id="foodNameInput" placeholder="Enter food name e.g. chicken, pasta, pizza...">
-            <button class="action-btn" style="flex:0; white-space:nowrap;" onclick="getNutrition()">🔍 Get Nutrition</button>
+        <div style="margin-top:20px; background:#111; border:1px solid #333; padding:20px;">
+            <p style="font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; color:#c9a84c; margin-bottom:12px;">🔍 Or Type Food Name Directly</p>
+            <div class="food-input-row">
+                <input type="text" id="foodNameInput" placeholder="e.g. chicken, pizza, biryani, pav bhaji..." onkeyup="if(event.key==='Enter') getNutrition()">
+                <button class="action-btn" style="flex:0; white-space:nowrap;" onclick="getNutrition()">🔍 Get Nutrition</button>
+            </div>
         </div>
 
         <!-- Loading -->
@@ -409,8 +411,12 @@
         let stream = null;
         let capturedDataUrl = null;
 
-        // Auto start camera when page loads
-        window.onload = function() { startCamera(); };
+        // Auto start camera only if HTTPS
+        window.onload = function() {
+            if (location.protocol === 'https:') {
+                switchPanel('camera');
+            }
+        };
 
         function switchPanel(type) {
             document.getElementById('uploadPanel').classList.remove('active');
@@ -438,26 +444,46 @@
             document.getElementById('captureBtn').textContent = '📸 Capture';
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert('Camera not supported on this browser. Please use Chrome or Safari.');
+                showCameraError();
                 return;
             }
 
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-                .then(s => {
-                    stream = s;
-                    const video = document.getElementById('video');
-                    video.srcObject = s;
-                    video.play();
-                })
-                .catch(err => {
-                    if (err.name === 'NotAllowedError') {
-                        alert('Camera permission denied. Please allow camera access in your browser settings.');
-                    } else if (err.name === 'NotFoundError') {
-                        alert('No camera found on this device.');
-                    } else {
-                        alert('Could not open camera: ' + err.message);
-                    }
-                });
+            // Try rear camera first, fallback to any camera
+            const constraints = [{ video: { facingMode: 'environment' }, audio: false }, { video: true, audio: false }];
+
+            function tryCamera(index) {
+                if (index >= constraints.length) { showCameraError(); return; }
+                navigator.mediaDevices.getUserMedia(constraints[index])
+                    .then(s => {
+                        stream = s;
+                        const video = document.getElementById('video');
+                        video.srcObject = s;
+                        video.play();
+                    })
+                    .catch(err => {
+                        if (err.name === 'NotAllowedError') {
+                            document.getElementById('videoContainer').innerHTML = `
+                                <div style="padding:40px; text-align:center; color:#e53935;">
+                                    <div style="font-size:3rem; margin-bottom:15px;">🛋️</div>
+                                    <p style="font-size:0.9rem; letter-spacing:1px;">Camera permission denied.</p>
+                                    <p style="font-size:0.8rem; color:#777; margin-top:10px;">Go to browser settings → Allow camera for this site</p>
+                                    <p style="font-size:0.8rem; color:#777; margin-top:5px;">Or use <b style="color:#c9a84c;">Upload Photo</b> instead</p>
+                                </div>`;
+                        } else {
+                            tryCamera(index + 1);
+                        }
+                    });
+            }
+            tryCamera(0);
+        }
+
+        function showCameraError() {
+            document.getElementById('videoContainer').innerHTML = `
+                <div style="padding:40px; text-align:center; color:#777;">
+                    <div style="font-size:3rem; margin-bottom:15px;">📷</div>
+                    <p style="font-size:0.9rem; letter-spacing:1px;">Camera not available on HTTP.</p>
+                    <p style="font-size:0.8rem; color:#555; margin-top:10px;">Use <b style="color:#c9a84c;">Upload Photo</b> or access via ngrok HTTPS link.</p>
+                </div>`;
         }
 
         function stopCamera() {
