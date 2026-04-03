@@ -1,3 +1,13 @@
+---
+title: Chefs Table AI
+emoji: 🍽️
+colorFrom: orange
+colorTo: red
+sdk: docker
+pinned: false
+app_file: inference.py
+---
+
 # 🍽️ Chef's Table — AI Recipe Assistant
 
 > Built for AI Hackathon 2025 — Theme: **Building AI Environment using Reinforcement Learning**
