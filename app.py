@@ -18,6 +18,22 @@ def save_users(users):
     with open(USERS_FILE, 'w') as f:
         json.dump(users, f, indent=4)
 
+def add_notification(username, icon, title, message):
+    from datetime import datetime
+    users = load_users()
+    if username not in users:
+        return
+    notifs = users[username].get('notifications', [])
+    notifs.insert(0, {
+        'icon': icon,
+        'title': title,
+        'message': message,
+        'time': datetime.now().strftime('%d %b %Y %I:%M %p'),
+        'unread': True
+    })
+    users[username]['notifications'] = notifs[:20]
+    save_users(users)
+
 def login_required(f):
     from functools import wraps
     @wraps(f)
@@ -45,12 +61,14 @@ def dashboard():
 @app.route('/rl_feedback', methods=['POST'])
 @login_required
 def rl_feedback():
-    from flask import jsonify
     recipe = request.form.get('recipe', '').strip()
-    action = request.form.get('action', '')  # 'like' or 'dislike'
+    action = request.form.get('action', '')
     if recipe:
         reward = 1.0 if action == 'like' else -0.5
         update_reward(session['username'], recipe, reward)
+        emoji = '\U0001f44d' if action == 'like' else '\U0001f44e'
+        msg = 'liked' if action == 'like' else 'disliked'
+        add_notification(session['username'], emoji, f'Recipe {msg.title()}', f'You {msg} "{recipe}". AI is learning!')
     return ('', 204)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -65,6 +83,7 @@ def login():
         if username in users and users[username]['password'] == password:
             session.permanent = True
             session['username'] = username
+            add_notification(username, '\U0001f513', 'Logged In', f'Welcome back {username}!')
             return redirect(url_for('dashboard'))
         else:
             error = 'Invalid username or password.'
@@ -96,6 +115,7 @@ def register():
             save_users(users)
             session.permanent = True
             session['username'] = username
+            add_notification(username, '\U0001f389', 'Welcome!', 'Account created! Start exploring recipes.')
             return redirect(url_for('dashboard'))
     return render_template('register.html', error=error)
 
@@ -105,18 +125,17 @@ def profile():
     users = load_users()
     username = session['username']
     user = users.get(username, {})
-    search_history = user.get('search_history', [])
-    favourites = user.get('favourites', [])
-    my_recipes = user.get('my_recipes', [])
-    return render_template('profile.html', username=username, user=user, search_history=search_history, favourites=favourites, my_recipes=my_recipes)
+    return render_template('profile.html', username=username, user=user,
+        search_history=user.get('search_history', []),
+        favourites=user.get('favourites', []),
+        my_recipes=user.get('my_recipes', []))
 
 @app.route('/get_history')
 @login_required
 def get_history():
     from flask import jsonify
     users = load_users()
-    username = session['username']
-    history = users.get(username, {}).get('search_history', [])
+    history = users.get(session['username'], {}).get('search_history', [])
     return jsonify({'history': history})
 
 @app.route('/save_search', methods=['POST'])
@@ -129,6 +148,7 @@ def save_search():
         history = users[username].get('search_history', [])
         if query not in history:
             history.insert(0, query)
+            add_notification(username, '\U0001f50d', 'New Search', f'You searched for "{query}"')
         users[username]['search_history'] = history[:10]
         save_users(users)
     return ('', 204)
@@ -143,8 +163,10 @@ def toggle_favourite():
         favs = users[username].get('favourites', [])
         if item in favs:
             favs.remove(item)
+            add_notification(username, '\U0001f494', 'Removed Favourite', f'"{item}" removed from favourites.')
         else:
             favs.insert(0, item)
+            add_notification(username, '\u2b50', 'Added to Favourites', f'"{item}" added to favourites!')
         users[username]['favourites'] = favs
         save_users(users)
     return ('', 204)
@@ -197,26 +219,20 @@ def search():
                         meals.append(meal)
                         seen.add(meal['idMeal'])
 
-        # 1. Search by meal name
         try:
             r1 = requests.get(f'https://www.themealdb.com/api/json/v1/1/search.php?s={requests.utils.quote(query)}', timeout=10).json()
             if r1.get('meals'): add_meals(r1['meals'])
         except: pass
-
-        # 2. Search by category
         try:
             r2 = requests.get(f'https://www.themealdb.com/api/json/v1/1/filter.php?c={requests.utils.quote(query)}', timeout=10).json()
             if r2.get('meals'): add_meals(r2['meals'][:6], full=False)
         except: pass
-
-        # 3. Search by area/cuisine
         try:
             r3 = requests.get(f'https://www.themealdb.com/api/json/v1/1/filter.php?a={requests.utils.quote(query)}', timeout=10).json()
             if r3.get('meals'): add_meals(r3['meals'][:6], full=False)
         except: pass
 
         if meals:
-            results = []
             for meal in meals[:8]:
                 results.append({
                     'id': meal['idMeal'],
@@ -228,9 +244,8 @@ def search():
                     'link': f"/recipe/{meal['idMeal']}"
                 })
 
-        # Always also check Indian recipes database and merge
         q = query.lower()
-        seen_titles = {r['title'].lower() for r in results} if meals else set()
+        seen_titles = {r['title'].lower() for r in results}
         for key, val in INDIAN_RECIPES.items():
             if key in q or q in key or q == key:
                 if val['title'].lower() not in seen_titles:
@@ -244,8 +259,7 @@ def search():
                         'link': f"/indian_recipe/{key}"
                     })
 
-        return {'items': results[:8] if results else []}
-
+        return {'items': results[:8]}
     except Exception as e:
         return {'items': [], 'error': str(e)}
 
@@ -254,7 +268,7 @@ def search():
 def add_recipe():
     success = False
     if request.method == 'POST':
-        recipe = {
+        rec = {
             'name':        request.form.get('name', '').strip(),
             'category':    request.form.get('category', ''),
             'cuisine':     request.form.get('cuisine', '').strip(),
@@ -270,8 +284,9 @@ def add_recipe():
         username = session['username']
         if 'my_recipes' not in users[username]:
             users[username]['my_recipes'] = []
-        users[username]['my_recipes'].insert(0, recipe)
+        users[username]['my_recipes'].insert(0, rec)
         save_users(users)
+        add_notification(username, '\U0001f468\U0001f373', 'Recipe Added', f'Your recipe "{rec["name"]}" was added!')
         success = True
     return render_template('add_recipe.html', success=success)
 
@@ -289,13 +304,11 @@ def detect_food():
     food_name = data.get('food_name', '').strip()
     image_data = data.get('image', '')
 
-    # If image is provided, detect food from image first
     if image_data and not food_name:
         try:
             if ',' in image_data:
                 image_data = image_data.split(',')[1]
             image_bytes = base64.b64decode(image_data)
-
             api_key    = 'acc_e1ef3474774f3bc'
             api_secret = '7bfa1558c737b27a546c86f2c6a2a81f'
             response = requests.post(
@@ -306,7 +319,6 @@ def detect_food():
             )
             result = response.json()
             tags = result.get('result', {}).get('tags', [])
-            # Filter food-related tags only
             food_keywords = ['food','dish','meal','cuisine','chicken','beef','fish','rice','pasta','pizza','salad','soup','bread','cake','curry','noodle','burger','taco','sushi','shrimp','vegetable','fruit','meat','egg','cheese']
             food_tags = []
             for t in tags:
@@ -317,7 +329,7 @@ def detect_food():
                 elif conf > 60:
                     food_tags.append(name)
             food_name = food_tags[0] if food_tags else tags[0]['tag']['en'] if tags else 'food'
-        except Exception as e:
+        except:
             food_name = 'food'
 
     if not food_name:
@@ -326,7 +338,6 @@ def detect_food():
     return jsonify({'food': food_name.title(), 'nutrition': get_estimated_nutrition(food_name), 'detected': True})
 
 def get_estimated_nutrition(food_name):
-    """Estimated nutrition per 100g for common foods"""
     food = food_name.lower()
     db = {
         'chicken':  {'calories':165,'protein':31,'fat':3.6,'carbs':0,'fiber':0,'sugar':0,'calcium':15,'iron':1.0,'vitamin_c':0,'vitamin_a':9},
@@ -360,6 +371,7 @@ def settings():
             users[username]['email'] = request.form.get('email', '').strip()
             users[username]['phone'] = request.form.get('phone', '').strip()
             save_users(users)
+            add_notification(username, '\u2699\ufe0f', 'Profile Updated', 'Your profile was updated successfully.')
             success = True
         elif action == 'password':
             current = request.form.get('current_password')
@@ -372,6 +384,7 @@ def settings():
             else:
                 users[username]['password'] = new_pw
                 save_users(users)
+                add_notification(username, '\U0001f512', 'Password Changed', 'Your password was changed successfully.')
                 success = True
     return render_template('settings.html', user=users.get(username, {}), success=success, error=error)
 
@@ -383,11 +396,7 @@ def notifications():
     user = users.get(username, {})
     notifs = user.get('notifications', [])
     if not notifs:
-        from datetime import datetime
-        notifs = [
-            {'icon': '🤖', 'title': 'RL Agent Active', 'message': 'Your AI agent is learning your food preferences!', 'time': 'Just now', 'unread': True},
-            {'icon': '🍽️', 'title': 'Welcome to Chef Table!', 'message': 'Start searching recipes and liking them to train your AI.', 'time': 'Today', 'unread': True},
-        ]
+        notifs = [{'icon': '\U0001f37d\ufe0f', 'title': "Welcome to Chef's Table!", 'message': 'Start searching and liking recipes to see your activity here.', 'time': 'Today', 'unread': True}]
     return render_template('notifications.html', notifications=notifs)
 
 @app.route('/clear_notifications', methods=['POST'])

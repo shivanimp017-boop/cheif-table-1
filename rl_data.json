@@ -1,14 +1,14 @@
 {
     "shivani_mp": {
         "q_table": {
-            "Grilled Salmon": 0.51,
-            "Pasta Carbonara": 0.657,
-            "Beef Steak": 0.51,
-            "Caesar Salad": 0.51,
-            "Chicken Curry": 0.3,
+            "Grilled Salmon": 0.3576705,
+            "Pasta Carbonara": 0.62415,
+            "Beef Steak": 0.4845,
+            "Caesar Salad": 0.4845,
+            "Chicken Curry": 0.285,
             "Chocolate Lava Cake": 0.0,
-            "Sushi Platter": 0.20700000000000002,
-            "Margherita Pizza": 0.657,
+            "Sushi Platter": 0.19665000000000002,
+            "Margherita Pizza": 0.62415,
             "Butter Chicken": 0.0,
             "Dal Tadka": 0.0,
             "Paneer Butter Masala": 0.0,
@@ -18,7 +18,7 @@
             "Falafel Wrap": 0.0,
             "Veggie Burger": 0.0
         },
-        "interactions": 0,
+        "interactions": 1,
         "veg_score": 0,
         "nonveg_score": 0
     },
