@@ -7,41 +7,26 @@ REPO_NAME = "chefs-table-ai"
 
 api = HfApi()
 
-# Create the space
-print("Creating Space...")
 try:
-    create_repo(
-        repo_id=f"{USERNAME}/{REPO_NAME}",
-        repo_type="space",
-        space_sdk="gradio",
-        token=TOKEN,
-        exist_ok=True
-    )
-    print(f"Space created: https://huggingface.co/spaces/{USERNAME}/{REPO_NAME}")
+    create_repo(repo_id=f"{USERNAME}/{REPO_NAME}", repo_type="space", space_sdk="docker", token=TOKEN, exist_ok=True)
+    print("Space ready.")
 except Exception as e:
-    print(f"Space may already exist: {e}")
+    print(f"Note: {e}")
 
-# Upload all files
-print("Uploading files...")
-files_to_upload = []
+SKIP = {'.git', '__pycache__', '.env', 'users.json', 'rl_data.json'}
+
 for root, dirs, files in os.walk("."):
-    dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', '.env']]
+    dirs[:] = [d for d in dirs if d not in SKIP]
     for file in files:
-        if not file.endswith('.pyc') and file != 'users.json' and file != 'rl_data.json':
-            filepath = os.path.join(root, file)
-            files_to_upload.append(filepath)
-
-for filepath in files_to_upload:
-    try:
-        api.upload_file(
-            path_or_fileobj=filepath,
-            path_in_repo=filepath.replace(".\\", "").replace("./", ""),
-            repo_id=f"{USERNAME}/{REPO_NAME}",
-            repo_type="space",
-            token=TOKEN
-        )
-        print(f"Uploaded: {filepath}")
-    except Exception as e:
-        print(f"Skipped {filepath}: {e}")
+        if file.endswith('.pyc'):
+            continue
+        filepath = os.path.join(root, file)
+        repo_path = filepath.replace(".\\", "").replace("./", "")
+        try:
+            api.upload_file(path_or_fileobj=filepath, path_in_repo=repo_path,
+                repo_id=f"{USERNAME}/{REPO_NAME}", repo_type="space", token=TOKEN)
+            print(f"Uploaded: {repo_path}")
+        except Exception as e:
+            print(f"Skipped {repo_path}: {e}")
 
 print(f"\nDone! Visit: https://huggingface.co/spaces/{USERNAME}/{REPO_NAME}")
