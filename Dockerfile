@@ -1,12 +1,15 @@
 FROM python:3.11-slim
 
+RUN pip install uv
+
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --frozen
 
 COPY . .
 
 EXPOSE 7860
 
-CMD ["python", "inference.py"]
+CMD ["uv", "run", "python", "inference.py"]
