@@ -1,4 +1,4 @@
-import subprocess, sys
+import subprocess, sys, os
 try:
     from openenv.core import Environment, Action, Observation, create_fastapi_app
 except ModuleNotFoundError:
@@ -92,7 +92,8 @@ app = create_fastapi_app(
 
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    port = int(os.environ.get("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     main()
