@@ -1,5 +1,8 @@
 flask
 requests
 openenv-core
+fastapi
+uvicorn
+pydantic
 huggingface_hub
 pyngrok
