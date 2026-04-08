@@ -2,17 +2,12 @@ import subprocess
 import sys
 import os
 import random
+import socket
 
-try:
-    import uvicorn
-    from openenv.core import Environment, Action, Observation, create_fastapi_app
-except ModuleNotFoundError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "openenv-core", "fastapi", "uvicorn", "pydantic", "-q"])
-    import uvicorn
-    from openenv.core import Environment, Action, Observation, create_fastapi_app
-
+from openenv.core import Environment, Action, Observation, create_fastapi_app
 from rl_agent import get_recommendations, update_reward, get_q_table, RECIPE_NAMES, CATEGORIES
 from typing import Optional
+import uvicorn
 
 
 class RecipeAction(Action):
