@@ -1,8 +1,8 @@
 ---
 title: Chefs Table AI
 emoji: 🍽️
-colorFrom: orange
-colorTo: red
+colorFrom: red
+colorTo: yellow
 sdk: docker
 pinned: false
 app_file: inference.py
@@ -55,6 +55,35 @@ The agent improves with every interaction using:
 Q(s,a) = Q(s,a) + α * (reward + γ * max_Q - Q(s,a))
 ```
 Where α=0.3 (learning rate), γ=0.9 (discount factor)
+
+## 🤖 OpenEnv Environment Spec
+
+### Tasks
+| Task | Description | Max Steps | Target |
+|------|-------------|-----------|--------|
+| **Easy** | Like 3 unique recipes | 10 | 3 likes |
+| **Medium** | Like 2 veg + 2 non-veg recipes | 15 | Balanced |
+| **Hard** | Achieve total reward ≥ 5.0 | 20 | Score ≥ 5.0 |
+
+### Action Space
+```json
+{"recipe": "string", "feedback": "like|dislike", "task": "easy|medium|hard"}
+```
+
+### Observation Space
+```json
+{"recommendations": ["list"], "q_values": {}, "step": 0, "total_reward": 0.0, "reward": 0.0, "done": false, "task": "easy", "task_score": 0.0, "task_progress": "string"}
+```
+
+### Reward Function
+- **+1.0** like a recipe
+- **+0.3** partial progress (new unique recipe liked)
+- **-0.5** dislike a recipe
+
+### Baseline Scores
+```bash
+python baseline.py
+```
 
 ## 🛠️ Tech Stack
 - Python 3.14 + Flask
