@@ -10,8 +10,8 @@ RUN uv sync --frozen
 
 COPY . .
 
-EXPOSE 8000
+EXPOSE 7860
 
-ENV PORT=8000
+ENV PORT=7860
 
 CMD ["uv", "run", "python", "inference.py"]
