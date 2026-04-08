@@ -152,13 +152,21 @@ app = create_fastapi_app(
 )
 
 
-def main():
-    for port in [int(os.environ.get("PORT", 7860)), 7860, 8000, 8080, 3000]:
+def get_free_port():
+    import socket
+    preferred = int(os.environ.get("PORT", 7860))
+    for port in [preferred, 8000, 8080, 8888, 9000]:
         try:
-            uvicorn.run(app, host="0.0.0.0", port=port)
-            break
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('', port))
+                return port
         except OSError:
             continue
+    return preferred
+
+def main():
+    port = get_free_port()
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
