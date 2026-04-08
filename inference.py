@@ -153,8 +153,12 @@ app = create_fastapi_app(
 
 
 def main():
-    port = int(os.environ.get("PORT", 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    for port in [int(os.environ.get("PORT", 7860)), 7860, 8000, 8080, 3000]:
+        try:
+            uvicorn.run(app, host="0.0.0.0", port=port)
+            break
+        except OSError:
+            continue
 
 
 if __name__ == "__main__":
