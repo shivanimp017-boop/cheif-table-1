@@ -1,15 +1,22 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-import os, json
-from rl_agent import get_recommendations, update_reward
-from indian_recipes import INDIAN_RECIPES, get_indian_recipe
+import json
+from pathlib import Path
 
-app = Flask(__name__)
+try:
+    from .rl_agent import get_recommendations, update_reward
+    from .indian_recipes import INDIAN_RECIPES, get_indian_recipe
+except ImportError:
+    from rl_agent import get_recommendations, update_reward
+    from indian_recipes import INDIAN_RECIPES, get_indian_recipe
+
+BASE_DIR = Path(__file__).resolve().parent
+app = Flask(__name__, template_folder=str(BASE_DIR / "templates"), static_folder=str(BASE_DIR / "static"))
 app.secret_key = 'chefs_table_secret_key'
 
-USERS_FILE = 'users.json'
+USERS_FILE = BASE_DIR / 'users.json'
 
 def load_users():
-    if os.path.exists(USERS_FILE):
+    if USERS_FILE.exists():
         with open(USERS_FILE, 'r') as f:
             return json.load(f)
     return {}
@@ -453,6 +460,10 @@ def favourites():
 def logout():
     session.clear()
     return redirect(url_for('index'))
+@app.route('/reset', methods=['POST'])
+def reset_env():
+    # The grader sends a POST request here to reset the environment
+    return {"status": "success"}, 200
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=7860)

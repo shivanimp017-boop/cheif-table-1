@@ -10,7 +10,7 @@ def run_task(task: str):
     print(f"\n--- Task: {task.upper()} ---")
     print(f"Goal: {obs.task_progress}")
 
-    from rl_agent import RECIPE_NAMES, CATEGORIES
+    from server.rl_agent import RECIPE_NAMES, CATEGORIES
     import random
 
     for i in range(20):

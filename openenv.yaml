@@ -21,6 +21,16 @@ observation_space:
     total_reward:
       type: number
       description: Cumulative reward so far
+    task:
+      type: string
+      enum: [easy, medium, hard]
+      description: Current task identifier
+    task_score:
+      type: number
+      description: Normalized task completion score in [0, 1]
+    task_progress:
+      type: string
+      description: Human-readable progress summary
     reward:
       type: number
       description: Reward from last action
@@ -38,11 +48,15 @@ action_space:
       type: string
       enum: [like, dislike]
       description: User feedback on the recipe
+    task:
+      type: string
+      enum: [easy, medium, hard]
+      description: Optional task override for the step
 
 tasks:
   - id: easy
     name: Like Popular Recipes
-    description: Agent must like at least 3 recipes from the top recommended list
+    description: Agent must like at least 3 unique recipes from the recommendation list
     max_steps: 10
     reward_range: [0.0, 1.0]
 

@@ -1,17 +1,9 @@
 FROM python:3.11-slim
-
-RUN pip install uv
-
 WORKDIR /app
-
-COPY pyproject.toml uv.lock ./
-
-RUN uv sync --frozen
-
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-
 EXPOSE 7860
-
 ENV PORT=7860
-
-CMD ["uv", "run", "python", "inference.py"]
+ENV PYTHONPATH="/app"
+CMD ["python", "inference.py"]

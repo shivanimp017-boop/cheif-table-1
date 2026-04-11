@@ -6,6 +6,8 @@ colorTo: yellow
 sdk: docker
 pinned: false
 app_file: inference.py
+app_port: 7860
+base_path: /site
 ---
 
 # 🍽️ Chef's Table — AI Recipe Assistant

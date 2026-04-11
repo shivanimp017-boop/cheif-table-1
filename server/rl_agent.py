@@ -2,6 +2,7 @@ import json
 import os
 import random
 from datetime import datetime
+from pathlib import Path
 
 RECIPES = [
     {'name': 'Grilled Salmon',       'id': '52959', 'img': 'https://www.themealdb.com/images/media/meals/xxyupu1468262513.jpg', 'category': 'nonveg', 'cuisine': 'seafood',  'meal_time': ['lunch', 'dinner']},
@@ -29,17 +30,28 @@ MEAL_IDS     = {r['name']: r['id'] for r in RECIPES}
 CUISINES     = {r['name']: r['cuisine'] for r in RECIPES}
 MEAL_TIMES   = {r['name']: r['meal_time'] for r in RECIPES}
 
-RL_FILE = 'rl_data.json'
+RL_FILE = Path(__file__).resolve().with_name('rl_data.json')
+
+_cached_data = None
 
 def load_rl_data():
-    if os.path.exists(RL_FILE):
+    global _cached_data
+    if _cached_data is not None:
+        return _cached_data
+        
+    if RL_FILE.exists():
         with open(RL_FILE, 'r') as f:
-            return json.load(f)
-    return {}
+            _cached_data = json.load(f)
+            return _cached_data
+            
+    _cached_data = {}
+    return _cached_data
 
 def save_rl_data(data):
+    global _cached_data
+    _cached_data = data
     with open(RL_FILE, 'w') as f:
-        json.dump(data, f, indent=4)
+        json.dump(data, f)
 
 def get_meal_time():
     hour = datetime.now().hour

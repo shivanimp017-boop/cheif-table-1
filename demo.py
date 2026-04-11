@@ -5,7 +5,7 @@ This script demonstrates the core AI/RL environment.
 Run this to see the Q-Learning agent in action without the web UI.
 """
 
-from rl_agent import get_recommendations, update_reward, get_q_table, RECIPE_NAMES
+from server.rl_agent import get_recommendations, update_reward, get_q_table, RECIPE_NAMES
 
 USERNAME = "demo_user"
 

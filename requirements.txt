@@ -6,3 +6,4 @@ uvicorn
 pydantic
 huggingface_hub
 pyngrok
+openenv
