@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ recipe.title }} - Chef's Table</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background-color: #000; color: #fff; font-family: 'Georgia', serif; min-height: 100vh; padding-bottom: 60px; }
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 60px; border-bottom: 1px solid #333; }
+        .logo { font-size: 1.8rem; font-weight: bold; letter-spacing: 3px; text-transform: uppercase; text-decoration: none; color: #fff; }
+        .logo span { color: #c9a84c; }
+        .back-btn { display: inline-block; padding: 8px 24px; border: 1px solid #444; color: #aaa; text-decoration: none; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; transition: all 0.3s; }
+        .back-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+        .hero { position: relative; height: 280px; overflow: hidden; }
+        .hero img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.4); }
+        .hero-text { position: absolute; bottom: 30px; left: 60px; }
+        .hero-text h1 { font-size: 2.2rem; letter-spacing: 4px; text-transform: uppercase; color: #fff; margin-bottom: 10px; }
+        .hero-tags span { display: inline-block; padding: 4px 14px; border: 1px solid #c9a84c; color: #c9a84c; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; margin-right: 8px; }
+        .container { max-width: 900px; margin: 0 auto; padding: 50px 20px; }
+        .info-row { display: flex; gap: 20px; margin-bottom: 50px; flex-wrap: wrap; }
+        .info-box { flex: 1; min-width: 140px; background: #111; border: 1px solid #333; padding: 20px; text-align: center; }
+        .info-box .icon { font-size: 1.8rem; margin-bottom: 8px; }
+        .info-box .label { font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; color: #777; margin-bottom: 6px; }
+        .info-box .value { font-size: 1rem; color: #c9a84c; letter-spacing: 1px; }
+        .section-title { font-size: 1rem; letter-spacing: 4px; text-transform: uppercase; color: #c9a84c; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: #333; }
+        .ingredients-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 50px; }
+        .ingredient-item { background: #111; border: 1px solid #333; padding: 12px 18px; display: flex; align-items: center; gap: 10px; min-width: 180px; transition: border 0.3s; }
+        .ingredient-item:hover { border-color: #c9a84c; }
+        .ingredient-item .ing-name { font-size: 0.88rem; color: #fff; text-transform: capitalize; }
+        .ingredient-item .ing-measure { font-size: 0.78rem; color: #c9a84c; margin-left: auto; white-space: nowrap; }
+        .steps-list { margin-bottom: 50px; }
+        .step-item { display: flex; gap: 20px; margin-bottom: 20px; background: #111; border: 1px solid #222; padding: 20px; }
+        .step-num { font-size: 1.5rem; color: #c9a84c; font-weight: bold; min-width: 36px; }
+        .step-text { font-size: 0.9rem; color: #ccc; line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/" class="logo">Chef<span>'s</span> Table</a>
+        <a href="/dashboard" class="back-btn">← Back</a>
+    </nav>
+
+    <div class="hero">
+        <img src="{{ recipe.thumb }}" alt="{{ recipe.title }}">
+        <div class="hero-text">
+            <h1>{{ recipe.title }}</h1>
+            <div class="hero-tags">
+                <span>{{ recipe.category }}</span>
+                <span>{{ recipe.area }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- Quick Info -->
+        <div class="info-row">
+            <div class="info-box">
+                <div class="icon">⏱️</div>
+                <div class="label">Prep Time</div>
+                <div class="value">{{ recipe.prep_time }}</div>
+            </div>
+            <div class="info-box">
+                <div class="icon">🍳</div>
+                <div class="label">Cook Time</div>
+                <div class="value">{{ recipe.cook_time }}</div>
+            </div>
+            <div class="info-box">
+                <div class="icon">🧂</div>
+                <div class="label">Ingredients</div>
+                <div class="value">{{ recipe.ingredients|length }} items</div>
+            </div>
+            <div class="info-box">
+                <div class="icon">👥</div>
+                <div class="label">Serves</div>
+                <div class="value">{{ recipe.serves }}</div>
+            </div>
+        </div>
+
+        <!-- Ingredients -->
+        <div class="section-title">🧂 Ingredients & Measures</div>
+        <div class="ingredients-grid">
+            {% for ing in recipe.ingredients %}
+            <div class="ingredient-item">
+                <span>🔸</span>
+                <span class="ing-name">{{ ing.name }}</span>
+                <span class="ing-measure">{{ ing.measure }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Steps -->
+        <div class="section-title">👨‍🍳 Cooking Steps</div>
+        <div class="steps-list">
+            {% for step in recipe.instructions %}
+            <div class="step-item">
+                <div class="step-num">{{ loop.index }}</div>
+                <div class="step-text">{{ step }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+</body>
+</html>

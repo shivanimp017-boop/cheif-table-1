@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Recipe - Chef's Table</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            border-bottom: 1px solid #333;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .logo span { color: #c9a84c; }
+
+        .back-btn {
+            display: inline-block;
+            padding: 8px 24px;
+            border: 1px solid #444;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+
+        .container {
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+
+        .page-title {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-title h2 {
+            font-size: 2rem;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .page-title h2 span { color: #c9a84c; }
+
+        .divider {
+            width: 60px;
+            height: 2px;
+            background: #c9a84c;
+            margin: 15px auto 0;
+        }
+
+        .form-group { margin-bottom: 22px; }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: #111;
+            border: 1px solid #444;
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: 'Georgia', serif;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus { border-color: #c9a84c; }
+
+        textarea { resize: vertical; min-height: 100px; }
+
+        select option { background: #111; }
+
+        .row { display: flex; gap: 20px; }
+        .row .form-group { flex: 1; }
+
+        /* Ingredients */
+        .ingredient-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .ingredient-row input { flex: 1; }
+
+        .remove-btn {
+            background: none;
+            border: 1px solid #e53935;
+            color: #e53935;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .remove-btn:hover { background: #e53935; color: #fff; }
+
+        .add-ing-btn {
+            background: none;
+            border: 1px dashed #555;
+            color: #777;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            width: 100%;
+            margin-top: 5px;
+            transition: all 0.3s;
+            font-family: 'Georgia', serif;
+        }
+
+        .add-ing-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+
+        .submit-btn {
+            display: block;
+            width: 100%;
+            margin-top: 30px;
+            padding: 15px;
+            border: 2px solid #c9a84c;
+            color: #c9a84c;
+            background: transparent;
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Georgia', serif;
+        }
+
+        .submit-btn:hover { background: #c9a84c; color: #000; }
+
+        .success-msg {
+            background: #0d1f0d;
+            border: 1px solid #4caf50;
+            color: #4caf50;
+            padding: 14px 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            margin-bottom: 30px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Chef<span>'s</span> Table</a>
+        <a href="/dashboard" class="back-btn">← Back</a>
+    </nav>
+
+    <div class="container">
+        <div class="page-title">
+            <h2>Add Your <span>Recipe</span></h2>
+            <div class="divider"></div>
+        </div>
+
+        <div class="success-msg" id="successMsg">✅ Recipe added successfully!</div>
+
+        <form method="POST" action="/add_recipe">
+            <div class="form-group">
+                <label>Recipe Name</label>
+                <input type="text" name="name" placeholder="e.g. Spicy Chicken Biryani" required>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label>Category</label>
+                    <select name="category" required>
+                        <option value="" disabled selected>Select category</option>
+                        <option>Veg</option>
+                        <option>Non Veg</option>
+                        <option>Dessert</option>
+                        <option>Snack</option>
+                        <option>Drink</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Cuisine</label>
+                    <input type="text" name="cuisine" placeholder="e.g. Indian, Italian">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label>Prep Time</label>
+                    <input type="text" name="prep_time" placeholder="e.g. 15 mins">
+                </div>
+                <div class="form-group">
+                    <label>Cook Time</label>
+                    <input type="text" name="cook_time" placeholder="e.g. 30 mins">
+                </div>
+                <div class="form-group">
+                    <label>Serves</label>
+                    <input type="text" name="serves" placeholder="e.g. 4 people">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Ingredients</label>
+                <div id="ingredientsList">
+                    <div class="ingredient-row">
+                        <input type="text" name="ingredients[]" placeholder="e.g. Chicken — 500g">
+                        <button type="button" class="remove-btn" onclick="removeIng(this)">✕</button>
+                    </div>
+                </div>
+                <button type="button" class="add-ing-btn" onclick="addIngredient()">+ Add Ingredient</button>
+            </div>
+
+            <div class="form-group">
+                <label>Cooking Steps</label>
+                <textarea name="steps" placeholder="Write step by step instructions..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Extra Notes (optional)</label>
+                <input type="text" name="notes" placeholder="e.g. Best served hot with naan">
+            </div>
+
+            <button type="submit" class="submit-btn">Submit Recipe</button>
+        </form>
+    </div>
+
+    <script>
+        function addIngredient() {
+            const div = document.createElement('div');
+            div.className = 'ingredient-row';
+            div.innerHTML = `<input type="text" name="ingredients[]" placeholder="e.g. Onion — 2 medium"><button type="button" class="remove-btn" onclick="removeIng(this)">✕</button>`;
+            document.getElementById('ingredientsList').appendChild(div);
+        }
+
+        function removeIng(btn) {
+            const rows = document.querySelectorAll('.ingredient-row');
+            if (rows.length > 1) btn.parentElement.remove();
+        }
+
+        {% if success %}
+        document.getElementById('successMsg').style.display = 'block';
+        {% endif %}
+    </script>
+
+</body>
+</html>

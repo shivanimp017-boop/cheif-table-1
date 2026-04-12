@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Chef's Table</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            border-bottom: 1px solid #333;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .logo span { color: #c9a84c; }
+
+        .nav-right { display: flex; align-items: center; gap: 30px; }
+
+        .nav-right a {
+            color: #ccc;
+            text-decoration: none;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        .nav-right a:hover { color: #c9a84c; }
+
+        .container {
+            max-width: 600px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            background: #1a1a1a;
+            border: 2px solid #c9a84c;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            margin: 0 auto 20px;
+        }
+
+        .profile-header h2 {
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .profile-header p {
+            color: #c9a84c;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .divider {
+            width: 60px;
+            height: 2px;
+            background: #c9a84c;
+            margin: 20px auto;
+        }
+
+        .info-card {
+            background: #111;
+            border: 1px solid #333;
+            padding: 30px 40px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid #222;
+        }
+
+        .info-row:last-child { border-bottom: none; }
+
+        .info-label {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #777;
+        }
+
+        .info-value {
+            font-size: 0.95rem;
+            color: #fff;
+            text-align: right;
+        }
+
+        .logout-btn {
+            display: block;
+            width: 100%;
+            margin-top: 30px;
+            padding: 14px;
+            border: 2px solid #e53935;
+            color: #e53935;
+            background: transparent;
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-family: 'Georgia', serif;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #c9a84c;
+            margin: 40px 0 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #333;
+        }
+
+        .history-list, .fav-list {
+            background: #111;
+            border: 1px solid #333;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-bottom: 1px solid #222;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        .list-item:last-child { border-bottom: none; }
+
+        .list-item .item-icon { font-size: 1rem; color: #555; }
+
+        .empty-msg {
+            padding: 20px;
+            text-align: center;
+            color: #555;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+        }
+
+        .recipe-card {
+            background: #111;
+            border: 1px solid #333;
+            padding: 20px;
+            margin-bottom: 12px;
+            transition: border 0.3s;
+        }
+
+        .recipe-card:hover { border-color: #c9a84c; }
+
+        .recipe-card h4 {
+            font-size: 0.95rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .recipe-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .recipe-meta span {
+            padding: 3px 10px;
+            border: 1px solid #333;
+            color: #888;
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .recipe-meta span b { color: #c9a84c; }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%;
+            background: #111;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            z-index: 999;
+        }
+
+        .bottom-nav a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            color: #777;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: color 0.3s;
+        }
+
+        .bottom-nav a:hover, .bottom-nav a.active { color: #c9a84c; }
+        .bottom-nav .icon { font-size: 1.6rem; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">Chef<span>'s</span> Table</a>
+        <div class="nav-right">
+            <a href="/dashboard">Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="profile-header">
+            <div class="avatar">👤</div>
+            <h2>{{ user.name or username }}</h2>
+            <p>@{{ username }}</p>
+            <div class="divider"></div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">Username</span>
+                <span class="info-value">{{ username }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Full Name</span>
+                <span class="info-value">{{ user.name or '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ user.email or '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Phone</span>
+                <span class="info-value">{{ user.phone or '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Date of Birth</span>
+                <span class="info-value">{{ user.dob or '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Gender</span>
+                <span class="info-value">{{ user.gender or '—' }}</span>
+            </div>
+        </div>
+
+        <!-- Search History -->
+        <div class="section-title">🔍 Search History</div>
+        <div class="history-list">
+            {% if search_history %}
+                {% for item in search_history %}
+                <div class="list-item">
+                    <span class="item-icon">🕐</span>
+                    <span>{{ item }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-msg">No search history yet</div>
+            {% endif %}
+        </div>
+
+        <!-- Favourites -->
+        <div class="section-title">⭐ Favourites</div>
+        <div class="fav-list">
+            {% if favourites %}
+                {% for item in favourites %}
+                <div class="list-item">
+                    <span class="item-icon">★</span>
+                    <span>{{ item }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-msg">No favourites added yet</div>
+            {% endif %}
+        </div>
+
+        <!-- My Recipes -->
+        <div class="section-title">👨‍🍳 My Recipes</div>
+        {% if my_recipes %}
+            {% for r in my_recipes %}
+            <div class="recipe-card">
+                <h4>{{ r.name }}</h4>
+                <div class="recipe-meta">
+                    <span><b>Category:</b> {{ r.category }}</span>
+                    {% if r.cuisine %}<span><b>Cuisine:</b> {{ r.cuisine }}</span>{% endif %}
+                    {% if r.prep_time %}<span><b>Prep:</b> {{ r.prep_time }}</span>{% endif %}
+                    {% if r.cook_time %}<span><b>Cook:</b> {{ r.cook_time }}</span>{% endif %}
+                    {% if r.serves %}<span><b>Serves:</b> {{ r.serves }}</span>{% endif %}
+                </div>
+                {% if r.ingredients %}
+                <div style="font-size:0.82rem; color:#777; margin-bottom:8px;">
+                    🧂 {{ r.ingredients | join(', ') }}
+                </div>
+                {% endif %}
+                {% if r.notes %}
+                <div style="font-size:0.8rem; color:#555; font-style:italic;">📝 {{ r.notes }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-msg">No recipes added yet. <a href="/add_recipe" style="color:#c9a84c;">Add one!</a></div>
+        {% endif %}
+
+        <a href="/logout" class="logout-btn">Logout</a>
+
+        <!-- RL & Quiz -->
+        <div class="section-title">🤖 AI Features</div>
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-label">🔔 Notifications</span>
+                <a href="/notifications" style="color:#c9a84c; text-decoration:none; font-size:0.85rem; letter-spacing:1px;">View All →</a>
+            </div>
+            <div class="info-row">
+                <span class="info-label">📈 RL Stats</span>
+                <a href="/rl_stats" style="color:#c9a84c; text-decoration:none; font-size:0.85rem; letter-spacing:1px;">View Stats →</a>
+            </div>
+            <div class="info-row">
+                <span class="info-label">🎯 Food Quiz</span>
+                <a href="/quiz" style="color:#c9a84c; text-decoration:none; font-size:0.85rem; letter-spacing:1px;">Take Quiz →</a>
+            </div>
+            <div class="info-row">
+                <span class="info-label">⚙️ Settings</span>
+                <a href="/settings" style="color:#c9a84c; text-decoration:none; font-size:0.85rem; letter-spacing:1px;">Edit Profile →</a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="bottom-nav">
+        <a href="/dashboard"><span class="icon">🏠</span><span>Home</span></a>
+        <a href="/detect"><span class="icon">📷</span><span>Camera</span></a>
+        <a href="/profile" class="active"><span class="icon">👤</span><span>Profile</span></a>
+    </div>
+
+</body>
+</html>
