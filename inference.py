@@ -3,13 +3,12 @@ import sys
 import random
 import socket
 from typing import Optional
-import uvicorn
 
-# Ensure the app directory is in path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from openenv.core import Environment, Action, Observation, create_fastapi_app
-from rl_agent import get_recommendations, update_reward, get_q_table, RECIPE_NAMES, CATEGORIES
+from rl_agent import RECIPE_NAMES, CATEGORIES
+import uvicorn
 
 
 class RecipeAction(Action):
@@ -37,34 +36,30 @@ class RecipeRecommendationEnv(Environment):
 
     def __init__(self):
         super().__init__()
-        self.username = "openenv_agent"
+        self._reset_state("easy")
+
+    def _reset_state(self, task="easy"):
         self.step_count = 0
-        self.max_steps = 10
         self.total_reward = 0.0
-        self.task = "easy"
+        self.task = task
         self.liked_recipes = []
         self.liked_veg = 0
         self.liked_nonveg = 0
         self._q = {r: 0.0 for r in RECIPE_NAMES}
-        self._current_state = self._build_obs(0.0, False)
 
     @property
     def state(self) -> RecipeObservation:
-        return self._current_state
+        return self._build_obs(0.0, False)
 
     def reset(self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs) -> RecipeObservation:
-        self.step_count = 0
-        self.total_reward = 0.0
-        self.liked_recipes = []
-        self.liked_veg = 0
-        self.liked_nonveg = 0
-        self._q = {r: 0.0 for r in RECIPE_NAMES}
         task = kwargs.get("task", "easy")
         if isinstance(task, str) and task.startswith("task_"):
             task = task[5:]
-        self.task = task if task in ("easy", "medium", "hard") else "easy"
-        self._current_state = self._build_obs(0.0, False)
-        return self._current_state
+        self._reset_state(task if task in ("easy", "medium", "hard") else "easy")
+        return self._build_obs(0.0, False)
+
+    async def reset_async(self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs) -> RecipeObservation:
+        return self.reset(seed=seed, episode_id=episode_id, **kwargs)
 
     def step(self, action: RecipeAction, timeout_s: Optional[float] = None, **kwargs) -> RecipeObservation:
         recipe = action.recipe if action.recipe in RECIPE_NAMES else random.choice(RECIPE_NAMES)
@@ -72,34 +67,33 @@ class RecipeRecommendationEnv(Environment):
         task = action.task
         if isinstance(task, str) and task.startswith("task_"):
             task = task[5:]
-        self.task = task if task in ("easy", "medium", "hard") else self.task
+        if task in ("easy", "medium", "hard"):
+            self.task = task
 
         base_reward = 1.0 if feedback == 'like' else -0.5
         partial = 0.0
-        if feedback == 'like':
-            if recipe not in self.liked_recipes:
-                self.liked_recipes.append(recipe)
-                partial = 0.3
-            cat = CATEGORIES.get(recipe, '')
-            if cat == 'veg':
+        if feedback == 'like' and recipe not in self.liked_recipes:
+            self.liked_recipes.append(recipe)
+            partial = 0.3
+            if CATEGORIES.get(recipe) == 'veg':
                 self.liked_veg += 1
             else:
                 self.liked_nonveg += 1
 
         reward = base_reward + partial
-        # Update Q-value in memory
         alpha, gamma = 0.3, 0.9
         max_q = max(self._q.values())
-        self._q[recipe] = self._q.get(recipe, 0.0) + alpha * (base_reward + gamma * max_q - self._q.get(recipe, 0.0))
-        self.total_reward += reward
+        self._q[recipe] = self._q[recipe] + alpha * (base_reward + gamma * max_q - self._q[recipe])
+        self.total_reward = round(self.total_reward + reward, 4)
         self.step_count += 1
 
-        done = self._check_done()
-        self._current_state = self._build_obs(reward, done)
-        return self._current_state
+        return self._build_obs(reward, self._check_done())
+
+    async def step_async(self, action: RecipeAction, timeout_s: Optional[float] = None, **kwargs) -> RecipeObservation:
+        return self.step(action, timeout_s=timeout_s, **kwargs)
 
     def _check_done(self) -> bool:
-        if self.step_count >= self.max_steps:
+        if self.step_count >= 10:
             return True
         if self.task == "easy" and len(self.liked_recipes) >= 3:
             return True
@@ -114,27 +108,23 @@ class RecipeRecommendationEnv(Environment):
             return min(len(self.liked_recipes) / 3.0, 1.0)
         elif self.task == "medium":
             return (min(self.liked_veg / 2.0, 1.0) + min(self.liked_nonveg / 2.0, 1.0)) / 2.0
-        elif self.task == "hard":
-            return min(self.total_reward / 5.0, 1.0)
-        return 0.0
+        return min(self.total_reward / 5.0, 1.0)
 
     def _task_progress(self) -> str:
         if self.task == "easy":
             return f"Liked {len(self.liked_recipes)}/3 unique recipes"
         elif self.task == "medium":
             return f"Veg: {self.liked_veg}/2, Non-veg: {self.liked_nonveg}/2"
-        elif self.task == "hard":
-            return f"Total reward: {round(self.total_reward, 2)}/5.0"
-        return ""
+        return f"Total reward: {round(self.total_reward, 2)}/5.0"
 
     def _build_obs(self, reward: float, done: bool) -> RecipeObservation:
-        import random
-        recs = random.sample(RECIPE_NAMES, 4)
+        top = sorted(self._q.items(), key=lambda x: x[1], reverse=True)
+        recs = [r for r, _ in top[:4]]
         return RecipeObservation(
             recommendations=recs,
             q_values={k: round(v, 3) for k, v in self._q.items()},
             step=self.step_count,
-            total_reward=round(self.total_reward, 3),
+            total_reward=self.total_reward,
             reward=round(reward, 3),
             done=done,
             task=self.task,
@@ -152,7 +142,7 @@ app = create_fastapi_app(
 
 def get_free_port():
     preferred = int(os.environ.get("PORT", 7860))
-    for port in [preferred, 8000, 8080, 8888, 9000]:
+    for port in [preferred, 8000, 8080]:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.bind(('', port))
