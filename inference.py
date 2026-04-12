@@ -9,8 +9,8 @@ import requests
 from openai import OpenAI
 
 ENV_URL = os.getenv("ENV_URL", "https://shivanimp017-chefs-table-ai.hf.space")
-API_KEY = os.getenv("API_KEY", "dummy")
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+API_KEY = os.environ["API_KEY"]
+API_BASE_URL = os.environ["API_BASE_URL"]
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
@@ -22,20 +22,17 @@ NONVEG = ["Butter Chicken", "Chicken Curry", "Grilled Salmon", "Beef Steak"]
 
 def get_llm_action(task, obs, step):
     recs = obs.get("recommendations", RECIPES[:4])
-    prompt = f"Task: {task}. Recommended recipes: {recs}. Step: {step}. Choose a recipe to like."
-    try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=50,
-            timeout=15
-        )
-        content = response.choices[0].message.content.strip()
-        for r in RECIPES:
-            if r.lower() in content.lower():
-                return r
-    except Exception:
-        pass
+    prompt = f"Task: {task}. Recommended recipes: {recs}. Pick one recipe name to like from the list."
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=50,
+        timeout=20
+    )
+    content = response.choices[0].message.content.strip()
+    for r in RECIPES:
+        if r.lower() in content.lower():
+            return r
     if task == "task_medium":
         return VEG[step % len(VEG)] if step % 2 == 0 else NONVEG[step % len(NONVEG)]
     return recs[0] if recs else RECIPES[0]
@@ -53,8 +50,8 @@ for task in ["task_easy", "task_medium", "task_hard"]:
         continue
 
     while not done and step < 5:
-        recipe = get_llm_action(task, obs, step)
         try:
+            recipe = get_llm_action(task, obs, step)
             r2 = requests.post(f"{ENV_URL}/step",
                 json={"action": {"recipe": recipe, "feedback": "like", "task": task.replace("task_", "")}},
                 timeout=10)
