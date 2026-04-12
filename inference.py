@@ -1,7 +1,11 @@
 import os
 import sys
 import subprocess
-subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "-q"])
+
+# Install dependencies first
+subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "-q"],
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 import requests
 
 ENV_URL = os.getenv("ENV_URL", "https://shivanimp017-chefs-table-ai.hf.space")
@@ -17,7 +21,7 @@ for task in ["task_easy", "task_medium", "task_hard"]:
     step, score, done = 0, 0.0, False
     obs = {}
     try:
-        r = requests.post(f"{ENV_URL}/reset", json={"task_id": task}, timeout=5)
+        r = requests.post(f"{ENV_URL}/reset", json={"task_id": task}, timeout=10)
         obs = r.json().get("observation", {})
     except Exception as e:
         print(f"[STEP] step=1 reward=0.05 done=true error={str(e)[:80]}", flush=True)
@@ -30,11 +34,10 @@ for task in ["task_easy", "task_medium", "task_hard"]:
             recipe = VEG[step % len(VEG)] if step % 2 == 0 else NONVEG[step % len(NONVEG)]
         else:
             recipe = recs[0] if recs else RECIPES[0]
-
         try:
             r2 = requests.post(f"{ENV_URL}/step",
                 json={"action": {"recipe": recipe, "feedback": "like", "task": task.replace("task_", "")}},
-                timeout=5)
+                timeout=10)
             obs = r2.json().get("observation", {})
             reward = obs.get("reward", 1.0)
             done = obs.get("done", False)
