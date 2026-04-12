@@ -13,6 +13,10 @@ API_KEY = os.environ["API_KEY"]
 API_BASE_URL = os.environ["API_BASE_URL"]
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
+print(f"[INFO] API_BASE_URL={API_BASE_URL}", flush=True)
+print(f"[INFO] MODEL={MODEL_NAME}", flush=True)
+print(f"[INFO] ENV_URL={ENV_URL}", flush=True)
+
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 RECIPES = ["Butter Chicken", "Margherita Pizza", "Chicken Curry", "Paneer Butter Masala",
@@ -22,7 +26,8 @@ NONVEG = ["Butter Chicken", "Chicken Curry", "Grilled Salmon", "Beef Steak"]
 
 def get_llm_action(task, obs, step):
     recs = obs.get("recommendations", RECIPES[:4])
-    prompt = f"Task: {task}. Recommended recipes: {recs}. Pick one recipe name to like from the list."
+    prompt = f"Task: {task}. Recommended recipes: {recs}. Reply with just one recipe name from the list."
+    print(f"[LLM] Calling model={MODEL_NAME} base_url={API_BASE_URL}", flush=True)
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[{"role": "user", "content": prompt}],
@@ -30,6 +35,7 @@ def get_llm_action(task, obs, step):
         timeout=20
     )
     content = response.choices[0].message.content.strip()
+    print(f"[LLM] Response: {content}", flush=True)
     for r in RECIPES:
         if r.lower() in content.lower():
             return r
