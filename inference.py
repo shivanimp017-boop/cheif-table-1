@@ -39,12 +39,13 @@ class RecipeRecommendationEnv(Environment):
         super().__init__()
         self.username = "openenv_agent"
         self.step_count = 0
-        self.max_steps = 20
+        self.max_steps = 10
         self.total_reward = 0.0
         self.task = "easy"
         self.liked_recipes = []
         self.liked_veg = 0
         self.liked_nonveg = 0
+        self._q = {r: 0.0 for r in RECIPE_NAMES}
         self._current_state = self._build_obs(0.0, False)
 
     @property
@@ -57,6 +58,7 @@ class RecipeRecommendationEnv(Environment):
         self.liked_recipes = []
         self.liked_veg = 0
         self.liked_nonveg = 0
+        self._q = {r: 0.0 for r in RECIPE_NAMES}
         task = kwargs.get("task", "easy")
         if isinstance(task, str) and task.startswith("task_"):
             task = task[5:]
@@ -85,7 +87,10 @@ class RecipeRecommendationEnv(Environment):
                 self.liked_nonveg += 1
 
         reward = base_reward + partial
-        update_reward(self.username, recipe, base_reward)
+        # Update Q-value in memory
+        alpha, gamma = 0.3, 0.9
+        max_q = max(self._q.values())
+        self._q[recipe] = self._q.get(recipe, 0.0) + alpha * (base_reward + gamma * max_q - self._q.get(recipe, 0.0))
         self.total_reward += reward
         self.step_count += 1
 
@@ -123,11 +128,11 @@ class RecipeRecommendationEnv(Environment):
         return ""
 
     def _build_obs(self, reward: float, done: bool) -> RecipeObservation:
-        q = get_q_table(self.username)
-        recs = get_recommendations(self.username, top_n=4)
+        import random
+        recs = random.sample(RECIPE_NAMES, 4)
         return RecipeObservation(
-            recommendations=[r['name'] for r in recs],
-            q_values={k: round(v, 3) for k, v in q.items()},
+            recommendations=recs,
+            q_values={k: round(v, 3) for k, v in self._q.items()},
             step=self.step_count,
             total_reward=round(self.total_reward, 3),
             reward=round(reward, 3),
