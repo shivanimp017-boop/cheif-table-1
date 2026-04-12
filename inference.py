@@ -13,66 +13,47 @@ API_KEY = os.environ["API_KEY"]
 API_BASE_URL = os.environ["API_BASE_URL"]
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
-# Ensure base_url ends with /v1
-if not API_BASE_URL.endswith("/v1"):
-    if API_BASE_URL.endswith("/"):
-        API_BASE_URL = API_BASE_URL + "v1"
-    else:
-        API_BASE_URL = API_BASE_URL + "/v1"
+print(f"API_BASE_URL={API_BASE_URL}", flush=True)
+print(f"API_KEY starts with={API_KEY[:10]}", flush=True)
 
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 RECIPES = ["Butter Chicken", "Margherita Pizza", "Chicken Curry", "Paneer Butter Masala",
            "Grilled Salmon", "Dal Tadka", "Caesar Salad", "Beef Steak"]
-VEG = ["Margherita Pizza", "Caesar Salad", "Paneer Butter Masala", "Dal Tadka"]
-NONVEG = ["Butter Chicken", "Chicken Curry", "Grilled Salmon", "Beef Steak"]
 
 for task in ["task_easy", "task_medium", "task_hard"]:
     print(f"[START] task={task} env=chefs-table model={MODEL_NAME}", flush=True)
     step, score, done = 0, 0.0, False
     obs = {}
 
-    try:
-        r = requests.post(f"{ENV_URL}/reset", json={"task_id": task}, timeout=10)
-        obs = r.json().get("observation", {})
-    except Exception as e:
-        print(f"[STEP] step=1 reward=0.05 done=true error={str(e)[:80]}", flush=True)
-        print(f"[END] task={task} score=0.05 steps=1", flush=True)
-        continue
+    r = requests.post(f"{ENV_URL}/reset", json={"task_id": task}, timeout=15)
+    obs = r.json().get("observation", {})
 
     while not done and step < 5:
         recs = obs.get("recommendations", RECIPES[:4])
-        prompt = f"Task: {task}. Available recipes: {recs}. Reply with exactly one recipe name."
+        prompt = f"Task: {task}. Recipes: {recs}. Reply with one recipe name only."
 
-        try:
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=50,
-                timeout=20
-            )
-            content = response.choices[0].message.content.strip()
-            recipe = RECIPES[0]
-            for r_name in RECIPES:
-                if r_name.lower() in content.lower():
-                    recipe = r_name
-                    break
-        except Exception as e:
-            print(f"[LLM_ERROR] {str(e)[:120]}", flush=True)
-            recipe = VEG[step % len(VEG)] if task == "task_medium" and step % 2 == 0 else recs[0] if recs else RECIPES[0]
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=50,
+            timeout=25
+        )
+        content = response.choices[0].message.content.strip()
+        recipe = recs[0] if recs else RECIPES[0]
+        for r_name in RECIPES:
+            if r_name.lower() in content.lower():
+                recipe = r_name
+                break
 
-        try:
-            r2 = requests.post(f"{ENV_URL}/step",
-                json={"action": {"recipe": recipe, "feedback": "like", "task": task.replace("task_", "")}},
-                timeout=10)
-            obs = r2.json().get("observation", {})
-            reward = obs.get("reward", 1.0)
-            done = obs.get("done", False)
-            score = obs.get("task_score", 0.0)
-            step += 1
-            print(f"[STEP] step={step} reward={reward} done={done} error=null", flush=True)
-        except Exception as e:
-            print(f"[STEP] step={step+1} reward=0.05 done=true error={str(e)[:80]}", flush=True)
-            break
+        r2 = requests.post(f"{ENV_URL}/step",
+            json={"action": {"recipe": recipe, "feedback": "like", "task": task.replace("task_", "")}},
+            timeout=15)
+        obs = r2.json().get("observation", {})
+        reward = obs.get("reward", 1.0)
+        done = obs.get("done", False)
+        score = obs.get("task_score", 0.0)
+        step += 1
+        print(f"[STEP] step={step} reward={reward} done={done} error=null", flush=True)
 
     print(f"[END] task={task} score={score} steps={step}", flush=True)
