@@ -1,8 +1,12 @@
 import os
+import sys
 import random
 import socket
-from typing import Optional, Any, Literal
+from typing import Optional
 import uvicorn
+
+# Ensure the app directory is in path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from openenv.core import Environment, Action, Observation, create_fastapi_app
 from rl_agent import get_recommendations, update_reward, get_q_table, RECIPE_NAMES, CATEGORIES
