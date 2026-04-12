@@ -1,4 +1,7 @@
 import os
+import sys
+import subprocess
+subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "-q"])
 import requests
 
 ENV_URL = os.getenv("ENV_URL", "https://shivanimp017-chefs-table-ai.hf.space")
