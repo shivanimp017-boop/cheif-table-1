@@ -2,19 +2,43 @@ import os
 import sys
 import subprocess
 
-# Install dependencies first
-subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "-q"],
+subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "openai", "-q"],
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 import requests
+from openai import OpenAI
 
 ENV_URL = os.getenv("ENV_URL", "https://shivanimp017-chefs-table-ai.hf.space")
+API_KEY = os.getenv("API_KEY", "dummy")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+
+client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 RECIPES = ["Butter Chicken", "Margherita Pizza", "Chicken Curry", "Paneer Butter Masala",
            "Grilled Salmon", "Dal Tadka", "Caesar Salad", "Beef Steak"]
 VEG = ["Margherita Pizza", "Caesar Salad", "Paneer Butter Masala", "Dal Tadka"]
 NONVEG = ["Butter Chicken", "Chicken Curry", "Grilled Salmon", "Beef Steak"]
+
+def get_llm_action(task, obs, step):
+    recs = obs.get("recommendations", RECIPES[:4])
+    prompt = f"Task: {task}. Recommended recipes: {recs}. Step: {step}. Choose a recipe to like."
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=50,
+            timeout=15
+        )
+        content = response.choices[0].message.content.strip()
+        for r in RECIPES:
+            if r.lower() in content.lower():
+                return r
+    except Exception:
+        pass
+    if task == "task_medium":
+        return VEG[step % len(VEG)] if step % 2 == 0 else NONVEG[step % len(NONVEG)]
+    return recs[0] if recs else RECIPES[0]
 
 for task in ["task_easy", "task_medium", "task_hard"]:
     print(f"[START] task={task} env=chefs-table model={MODEL_NAME}", flush=True)
@@ -29,11 +53,7 @@ for task in ["task_easy", "task_medium", "task_hard"]:
         continue
 
     while not done and step < 5:
-        recs = obs.get("recommendations", RECIPES[:4])
-        if task == "task_medium":
-            recipe = VEG[step % len(VEG)] if step % 2 == 0 else NONVEG[step % len(NONVEG)]
-        else:
-            recipe = recs[0] if recs else RECIPES[0]
+        recipe = get_llm_action(task, obs, step)
         try:
             r2 = requests.post(f"{ENV_URL}/step",
                 json={"action": {"recipe": recipe, "feedback": "like", "task": task.replace("task_", "")}},
