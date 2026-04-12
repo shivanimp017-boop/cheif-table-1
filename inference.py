@@ -13,10 +13,6 @@ API_KEY = os.environ["API_KEY"]
 API_BASE_URL = os.environ["API_BASE_URL"]
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
-print(f"[INFO] API_BASE_URL={API_BASE_URL}", flush=True)
-print(f"[INFO] MODEL={MODEL_NAME}", flush=True)
-print(f"[INFO] ENV_URL={ENV_URL}", flush=True)
-
 client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 RECIPES = ["Butter Chicken", "Margherita Pizza", "Chicken Curry", "Paneer Butter Masala",
@@ -24,29 +20,11 @@ RECIPES = ["Butter Chicken", "Margherita Pizza", "Chicken Curry", "Paneer Butter
 VEG = ["Margherita Pizza", "Caesar Salad", "Paneer Butter Masala", "Dal Tadka"]
 NONVEG = ["Butter Chicken", "Chicken Curry", "Grilled Salmon", "Beef Steak"]
 
-def get_llm_action(task, obs, step):
-    recs = obs.get("recommendations", RECIPES[:4])
-    prompt = f"Task: {task}. Recommended recipes: {recs}. Reply with just one recipe name from the list."
-    print(f"[LLM] Calling model={MODEL_NAME} base_url={API_BASE_URL}", flush=True)
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=50,
-        timeout=20
-    )
-    content = response.choices[0].message.content.strip()
-    print(f"[LLM] Response: {content}", flush=True)
-    for r in RECIPES:
-        if r.lower() in content.lower():
-            return r
-    if task == "task_medium":
-        return VEG[step % len(VEG)] if step % 2 == 0 else NONVEG[step % len(NONVEG)]
-    return recs[0] if recs else RECIPES[0]
-
 for task in ["task_easy", "task_medium", "task_hard"]:
     print(f"[START] task={task} env=chefs-table model={MODEL_NAME}", flush=True)
     step, score, done = 0, 0.0, False
     obs = {}
+
     try:
         r = requests.post(f"{ENV_URL}/reset", json={"task_id": task}, timeout=10)
         obs = r.json().get("observation", {})
@@ -56,8 +34,28 @@ for task in ["task_easy", "task_medium", "task_hard"]:
         continue
 
     while not done and step < 5:
+        recs = obs.get("recommendations", RECIPES[:4])
+        prompt = f"Task: {task}. Recipes: {recs}. Reply with just one recipe name."
+
+        # LLM call - must go through proxy
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=50,
+            timeout=20
+        )
+        content = response.choices[0].message.content.strip()
+
+        recipe = RECIPES[0]
+        for r_name in RECIPES:
+            if r_name.lower() in content.lower():
+                recipe = r_name
+                break
+
+        if task == "task_medium" and recipe not in (VEG + NONVEG):
+            recipe = VEG[step % len(VEG)] if step % 2 == 0 else NONVEG[step % len(NONVEG)]
+
         try:
-            recipe = get_llm_action(task, obs, step)
             r2 = requests.post(f"{ENV_URL}/step",
                 json={"action": {"recipe": recipe, "feedback": "like", "task": task.replace("task_", "")}},
                 timeout=10)
