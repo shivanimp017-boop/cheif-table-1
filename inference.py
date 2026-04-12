@@ -1,293 +1,161 @@
-from __future__ import annotations
-
 import os
-from typing import Any, Literal
+import random
+import socket
+from typing import Optional, Any, Literal
+import uvicorn
 
-from fastapi import Request
-from fastapi.middleware.wsgi import WSGIMiddleware
-from fastapi.responses import RedirectResponse
-from openenv.core.env_server.http_server import create_app
-from openenv.core.env_server.interfaces import Environment
-from openenv.core.env_server.types import Action, Observation, State
-from pydantic import Field
-
-from server.rl_agent import CATEGORIES, RECIPE_NAMES
-
-try:
-    from server.app import app as flask_app
-except Exception:
-    flask_app = None
-
-
-TASK_LIMITS = {"easy": 10, "medium": 15, "hard": 20}
-TASK_TARGETS = {"easy": 3, "medium": 4, "hard": 5.0}
-POPULAR_RECIPES = [
-    "Butter Chicken",
-    "Margherita Pizza",
-    "Chicken Curry",
-    "Paneer Butter Masala",
-    "Grilled Salmon",
-    "Dal Tadka",
-]
-MEDIUM_PRIORITY = [
-    "Paneer Butter Masala",
-    "Butter Chicken",
-    "Dal Tadka",
-    "Chicken Curry",
-    "Margherita Pizza",
-    "Grilled Salmon",
-]
+from openenv.core import Environment, Action, Observation, create_fastapi_app
+from rl_agent import get_recommendations, update_reward, get_q_table, RECIPE_NAMES, CATEGORIES
 
 
 class RecipeAction(Action):
-    recipe: str = Field(..., description="Recipe name to interact with")
-    feedback: Literal["like", "dislike"] = Field(
-        ..., description="Feedback for the selected recipe"
-    )
-    task: Literal["easy", "medium", "hard"] | None = Field(
-        default=None,
-        description="Optional task override for this step",
-    )
+    recipe: str = ""
+    feedback: str = "like"
+    task: str = "easy"
 
 
 class RecipeObservation(Observation):
-    recommendations: list[str] = Field(
-        default_factory=list,
-        description="Recommended recipes for the current step",
-    )
-    q_values: dict[str, float] = Field(
-        default_factory=dict,
-        description="Current Q-values for each recipe",
-    )
-    step: int = Field(default=0, description="Current step count")
-    total_reward: float = Field(default=0.0, description="Episode cumulative reward")
-    task: Literal["easy", "medium", "hard"] = Field(
-        default="easy",
-        description="Current task identifier",
-    )
-    task_score: float = Field(
-        default=0.0, description="Normalized task completion score in [0, 1]"
-    )
-    task_progress: str = Field(
-        default="", description="Human-readable progress summary"
-    )
+    recommendations: list
+    q_values: dict
+    step: int
+    total_reward: float
+    reward: float = 0.0
+    done: bool = False
+    task: str = "easy"
+    task_score: float = 0.0
+    task_progress: str = ""
 
 
-class RecipeState(State):
-    task: Literal["easy", "medium", "hard"] = Field(default="easy")
-    total_reward: float = Field(default=0.0)
-    liked_recipes: list[str] = Field(default_factory=list)
-    disliked_recipes: list[str] = Field(default_factory=list)
-    seen_recipes: list[str] = Field(default_factory=list)
-    liked_veg: int = Field(default=0, ge=0)
-    liked_nonveg: int = Field(default=0, ge=0)
-    q_values: dict[str, float] = Field(default_factory=dict)
+class RecipeRecommendationEnv(Environment):
+    """Chef's Table AI — Recipe Recommendation RL Environment"""
 
-
-class RecipeRecommendationEnv(
-    Environment[RecipeAction, RecipeObservation, RecipeState]
-):
     SUPPORTS_CONCURRENT_SESSIONS = True
 
     def __init__(self):
         super().__init__()
-        self._state = self._fresh_state()
+        self.username = "openenv_agent"
+        self.step_count = 0
+        self.max_steps = 20
+        self.total_reward = 0.0
+        self.task = "easy"
+        self.liked_recipes = []
+        self.liked_veg = 0
+        self.liked_nonveg = 0
+        self._current_state = self._build_obs(0.0, False)
 
     @property
-    def state(self) -> RecipeState:
-        return self._state
+    def state(self) -> RecipeObservation:
+        return self._current_state
 
-    def reset(
-        self,
-        seed: int | None = None,
-        episode_id: str | None = None,
-        task: str | None = None,
-        task_id: str | None = None,
-        **_: Any,
-    ) -> RecipeObservation:
-        normalized_task = self._normalize_task(task_id or task)
-        self._state = self._fresh_state(task=normalized_task, episode_id=episode_id)
-        return self._build_observation(reward=0.0, done=False)
+    def reset(self, seed: Optional[int] = None, episode_id: Optional[str] = None, **kwargs) -> RecipeObservation:
+        self.step_count = 0
+        self.total_reward = 0.0
+        self.liked_recipes = []
+        self.liked_veg = 0
+        self.liked_nonveg = 0
+        task = kwargs.get("task", "easy")
+        if isinstance(task, str) and task.startswith("task_"):
+            task = task[5:]
+        self.task = task if task in ("easy", "medium", "hard") else "easy"
+        self._current_state = self._build_obs(0.0, False)
+        return self._current_state
 
-    def step(
-        self,
-        action: RecipeAction,
-        timeout_s: float | None = None,
-        **_: Any,
-    ) -> RecipeObservation:
-        del timeout_s
+    def step(self, action: RecipeAction, timeout_s: Optional[float] = None, **kwargs) -> RecipeObservation:
+        recipe = action.recipe if action.recipe in RECIPE_NAMES else random.choice(RECIPE_NAMES)
+        feedback = action.feedback if action.feedback in ('like', 'dislike') else 'like'
+        task = action.task
+        if isinstance(task, str) and task.startswith("task_"):
+            task = task[5:]
+        self.task = task if task in ("easy", "medium", "hard") else self.task
 
-        if action.task:
-            self._state.task = self._normalize_task(action.task)
-
-        recipe = action.recipe.strip()
-        if recipe not in RECIPE_NAMES:
-            self._state.step_count += 1
-            return self._build_observation(
-                reward=-1.0,
-                done=self._is_done(),
-                progress_override=f"Unknown recipe '{recipe}'. Choose one of the listed recipes.",
-            )
-
-        if recipe not in self._state.seen_recipes:
-            self._state.seen_recipes.append(recipe)
-
-        was_liked_before = recipe in self._state.liked_recipes
-        reward = 1.0 if action.feedback == "like" else -0.5
-        if action.feedback == "like" and not was_liked_before:
-            reward += 0.3
-            self._state.liked_recipes.append(recipe)
-            if CATEGORIES.get(recipe) == "veg":
-                self._state.liked_veg += 1
+        base_reward = 1.0 if feedback == 'like' else -0.5
+        partial = 0.0
+        if feedback == 'like':
+            if recipe not in self.liked_recipes:
+                self.liked_recipes.append(recipe)
+                partial = 0.3
+            cat = CATEGORIES.get(recipe, '')
+            if cat == 'veg':
+                self.liked_veg += 1
             else:
-                self._state.liked_nonveg += 1
-        elif action.feedback == "dislike" and recipe not in self._state.disliked_recipes:
-            self._state.disliked_recipes.append(recipe)
+                self.liked_nonveg += 1
 
-        self._update_q_value(recipe, reward)
-        self._state.total_reward = round(self._state.total_reward + reward, 4)
-        self._state.step_count += 1
+        reward = base_reward + partial
+        update_reward(self.username, recipe, base_reward)
+        self.total_reward += reward
+        self.step_count += 1
 
-        done = self._is_done()
-        return self._build_observation(reward=reward, done=done)
+        done = self._check_done()
+        self._current_state = self._build_obs(reward, done)
+        return self._current_state
 
-    def _fresh_state(
-        self,
-        task: Literal["easy", "medium", "hard"] = "easy",
-        episode_id: str | None = None,
-    ) -> RecipeState:
-        return RecipeState(
-            episode_id=episode_id,
-            task=task,
-            total_reward=0.0,
-            liked_recipes=[],
-            disliked_recipes=[],
-            seen_recipes=[],
-            liked_veg=0,
-            liked_nonveg=0,
-            q_values={recipe: 0.0 for recipe in RECIPE_NAMES},
-        )
+    def _check_done(self) -> bool:
+        if self.step_count >= self.max_steps:
+            return True
+        if self.task == "easy" and len(self.liked_recipes) >= 3:
+            return True
+        if self.task == "medium" and self.liked_veg >= 2 and self.liked_nonveg >= 2:
+            return True
+        if self.task == "hard" and self.total_reward >= 5.0:
+            return True
+        return False
 
-    def _build_observation(
-        self,
-        reward: float,
-        done: bool,
-        progress_override: str | None = None,
-    ) -> RecipeObservation:
-        return RecipeObservation(
-            done=done,
-            reward=reward,
-            recommendations=self._recommendations(),
-            q_values=dict(self._state.q_values),
-            step=self._state.step_count,
-            total_reward=self._state.total_reward,
-            task=self._state.task,
-            task_score=self._task_score(),
-            task_progress=progress_override or self._task_progress(),
-            metadata={
-                "max_steps": TASK_LIMITS[self._state.task],
-                "remaining_steps": max(
-                    0, TASK_LIMITS[self._state.task] - self._state.step_count
-                ),
-            },
-        )
-
-    def _recommendations(self) -> list[str]:
-        prioritized = self._priority_list()
-        scored: list[tuple[float, str]] = []
-
-        for rank, recipe in enumerate(prioritized):
-            q_value = self._state.q_values.get(recipe, 0.0)
-            unseen_bonus = 1.5 if recipe not in self._state.seen_recipes else 0.0
-            novelty_bonus = 0.6 if recipe not in self._state.liked_recipes else -0.2
-            priority_bonus = max(0.0, 1.0 - (rank * 0.03))
-            scored.append((q_value + unseen_bonus + novelty_bonus + priority_bonus, recipe))
-
-        scored.sort(key=lambda item: (-item[0], item[1]))
-        return [recipe for _, recipe in scored[:4]]
-
-    def _priority_list(self) -> list[str]:
-        if self._state.task == "medium":
-            preferred = MEDIUM_PRIORITY
-        else:
-            preferred = POPULAR_RECIPES
-
-        remaining = [recipe for recipe in RECIPE_NAMES if recipe not in preferred]
-        return preferred + remaining
-
-    def _update_q_value(self, recipe: str, reward: float) -> None:
-        alpha = 0.3
-        gamma = 0.9
-        current_value = self._state.q_values.get(recipe, 0.0)
-        max_future_value = max(self._state.q_values.values(), default=0.0)
-        updated_value = current_value + alpha * (
-            reward + (gamma * max_future_value) - current_value
-        )
-        self._state.q_values[recipe] = round(updated_value, 4)
-
-    def _task_score(self) -> float:
-        if self._state.task == "easy":
-            return round(min(1.0, len(set(self._state.liked_recipes)) / 3.0), 3)
-        if self._state.task == "medium":
-            progress = min(self._state.liked_veg, 2) + min(self._state.liked_nonveg, 2)
-            return round(min(1.0, progress / 4.0), 3)
-        return round(min(1.0, self._state.total_reward / TASK_TARGETS["hard"]), 3)
+    def _grade_task(self) -> float:
+        if self.task == "easy":
+            return min(len(self.liked_recipes) / 3.0, 1.0)
+        elif self.task == "medium":
+            return (min(self.liked_veg / 2.0, 1.0) + min(self.liked_nonveg / 2.0, 1.0)) / 2.0
+        elif self.task == "hard":
+            return min(self.total_reward / 5.0, 1.0)
+        return 0.0
 
     def _task_progress(self) -> str:
-        if self._state.task == "easy":
-            return f"{len(set(self._state.liked_recipes))}/3 unique recipe likes"
-        if self._state.task == "medium":
-            return (
-                f"veg={self._state.liked_veg}/2 | "
-                f"non-veg={self._state.liked_nonveg}/2"
-            )
-        return f"total_reward={self._state.total_reward:.1f}/5.0"
+        if self.task == "easy":
+            return f"Liked {len(self.liked_recipes)}/3 unique recipes"
+        elif self.task == "medium":
+            return f"Veg: {self.liked_veg}/2, Non-veg: {self.liked_nonveg}/2"
+        elif self.task == "hard":
+            return f"Total reward: {round(self.total_reward, 2)}/5.0"
+        return ""
 
-    def _is_done(self) -> bool:
-        limit_reached = self._state.step_count >= TASK_LIMITS[self._state.task]
-        if self._state.task == "easy":
-            return limit_reached or len(set(self._state.liked_recipes)) >= 3
-        if self._state.task == "medium":
-            return (
-                limit_reached
-                or self._state.liked_veg >= 2
-                and self._state.liked_nonveg >= 2
-            )
-        return limit_reached or self._state.total_reward >= TASK_TARGETS["hard"]
-
-    @staticmethod
-    def _normalize_task(task: str | None) -> Literal["easy", "medium", "hard"]:
-        value = (task or "easy").strip().lower()
-        if value.startswith("task_"):
-            value = value[5:]
-        if value not in TASK_LIMITS:
-            return "easy"
-        return value  # type: ignore[return-value]
+    def _build_obs(self, reward: float, done: bool) -> RecipeObservation:
+        q = get_q_table(self.username)
+        recs = get_recommendations(self.username, top_n=4)
+        return RecipeObservation(
+            recommendations=[r['name'] for r in recs],
+            q_values={k: round(v, 3) for k, v in q.items()},
+            step=self.step_count,
+            total_reward=round(self.total_reward, 3),
+            reward=round(reward, 3),
+            done=done,
+            task=self.task,
+            task_score=round(self._grade_task(), 3),
+            task_progress=self._task_progress(),
+        )
 
 
-app = create_app(
-    RecipeRecommendationEnv,
-    RecipeAction,
-    RecipeObservation,
-    env_name="chefs-table-ai",
-    max_concurrent_envs=4,
+app = create_fastapi_app(
+    env=RecipeRecommendationEnv,
+    action_cls=RecipeAction,
+    observation_cls=RecipeObservation,
 )
 
-if flask_app is not None:
-    app.mount("/site", WSGIMiddleware(flask_app))
+
+def get_free_port():
+    preferred = int(os.environ.get("PORT", 7860))
+    for port in [preferred, 8000, 8080, 8888, 9000]:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('', port))
+                return port
+        except OSError:
+            continue
+    return preferred
 
 
-@app.get("/", include_in_schema=False)
-async def root(_: Request) -> RedirectResponse:
-    if flask_app is not None:
-        return RedirectResponse(url="/site/")
-    return RedirectResponse(url="/docs")
-
-
-def main(host: str = "0.0.0.0", port: int | None = None) -> None:
-    import uvicorn
-
-    uvicorn.run(app, host=host, port=port or int(os.getenv("PORT", "7860")))
+def main():
+    port = get_free_port()
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
