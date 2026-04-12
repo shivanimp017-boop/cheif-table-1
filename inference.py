@@ -2,29 +2,30 @@ import os
 import sys
 import subprocess
 
-subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "openai", "httpx", "-q"],
+subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "openai", "-q"],
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 import requests
-import httpx
-import json
+from openai import OpenAI
 
 ENV_URL = os.getenv("ENV_URL", "https://shivanimp017-chefs-table-ai.hf.space")
 API_KEY = os.environ["API_KEY"]
 API_BASE_URL = os.environ["API_BASE_URL"]
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
+# Ensure base_url ends with /v1
+if not API_BASE_URL.endswith("/v1"):
+    if API_BASE_URL.endswith("/"):
+        API_BASE_URL = API_BASE_URL + "v1"
+    else:
+        API_BASE_URL = API_BASE_URL + "/v1"
+
+client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+
 RECIPES = ["Butter Chicken", "Margherita Pizza", "Chicken Curry", "Paneer Butter Masala",
            "Grilled Salmon", "Dal Tadka", "Caesar Salad", "Beef Steak"]
 VEG = ["Margherita Pizza", "Caesar Salad", "Paneer Butter Masala", "Dal Tadka"]
 NONVEG = ["Butter Chicken", "Chicken Curry", "Grilled Salmon", "Beef Steak"]
-
-def call_llm(prompt):
-    url = API_BASE_URL.rstrip("/") + "/chat/completions"
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    body = {"model": MODEL_NAME, "messages": [{"role": "user", "content": prompt}], "max_tokens": 50}
-    resp = httpx.post(url, headers=headers, json=body, timeout=20)
-    return resp.json()["choices"][0]["message"]["content"].strip()
 
 for task in ["task_easy", "task_medium", "task_hard"]:
     print(f"[START] task={task} env=chefs-table model={MODEL_NAME}", flush=True)
@@ -41,18 +42,24 @@ for task in ["task_easy", "task_medium", "task_hard"]:
 
     while not done and step < 5:
         recs = obs.get("recommendations", RECIPES[:4])
-        prompt = f"Task: {task}. Recipes: {recs}. Reply with just one recipe name."
+        prompt = f"Task: {task}. Available recipes: {recs}. Reply with exactly one recipe name."
 
         try:
-            content = call_llm(prompt)
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=50,
+                timeout=20
+            )
+            content = response.choices[0].message.content.strip()
             recipe = RECIPES[0]
             for r_name in RECIPES:
                 if r_name.lower() in content.lower():
                     recipe = r_name
                     break
         except Exception as e:
-            print(f"[LLM_ERROR] {str(e)[:80]}", flush=True)
-            recipe = VEG[step % len(VEG)] if task == "task_medium" and step % 2 == 0 else NONVEG[0]
+            print(f"[LLM_ERROR] {str(e)[:120]}", flush=True)
+            recipe = VEG[step % len(VEG)] if task == "task_medium" and step % 2 == 0 else recs[0] if recs else RECIPES[0]
 
         try:
             r2 = requests.post(f"{ENV_URL}/step",
